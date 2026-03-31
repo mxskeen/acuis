@@ -11,7 +11,7 @@ import '../../shared/services/storage_service.dart';
 class AlignmentScreen extends StatefulWidget {
   final List<Goal> goals;
   final List<Todo> todos;
-  final VoidCallback onDataChanged;
+  final void Function(List<Todo> updatedTodos) onDataChanged;
   
   const AlignmentScreen({
     super.key,
@@ -47,17 +47,18 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
       final service = AIAlignmentService(apiKey: _apiKey);
       final results = await service.analyzeAll(widget.todos, widget.goals);
       
-      // Update todos with new scores/explanations
-      for (int i = 0; i < widget.todos.length; i++) {
-        final todo = widget.todos[i];
+      // Build a new list with updated scores — never mutate widget.todos directly
+      final updatedTodos = widget.todos.map((todo) {
         if (results.containsKey(todo.id)) {
-          widget.todos[i] = todo.copyWith(
+          return todo.copyWith(
             alignmentScore: results[todo.id]!.score,
             alignmentExplanation: results[todo.id]!.explanation,
           );
         }
-      }
-      widget.onDataChanged(); // saves to storage
+        return todo;
+      }).toList();
+
+      widget.onDataChanged(updatedTodos);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
