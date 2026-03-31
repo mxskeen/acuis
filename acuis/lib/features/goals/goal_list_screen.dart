@@ -99,7 +99,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.ink)),
-        content: Text('Please set your NVIDIA API key in the Alignment tab to use AI task generation.',
+        content: Text('Please set your Ai API key in the Alignment tab to use AI task generation.',
             style: GoogleFonts.comfortaa(
                 fontSize: 13, color: AppColors.inkLight, height: 1.4)),
         actions: [
@@ -210,7 +210,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
                         const Text('🔥', style: TextStyle(fontSize: 14)),
                         const SizedBox(width: 5),
                         Text(
-                          _currentStreak > 0 ? '$_currentStreak day streak' : 'Start streak',
+                          _currentStreak > 0 ? '$_currentStreak' : '0',
                           style: GoogleFonts.comfortaa(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
