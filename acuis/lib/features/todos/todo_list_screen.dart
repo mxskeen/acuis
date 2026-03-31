@@ -7,6 +7,7 @@ import '../../models/goal.dart';
 import '../../shared/services/ai_task_generator_service.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
+import '../../shared/widgets/streak_sheet.dart';
 
 class TodoListScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -230,31 +231,38 @@ class _TodoListScreenState extends State<TodoListScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('🔥', style: TextStyle(fontSize: 16)),
-                        const SizedBox(width: 6),
-                        Text('$_currentStreak day streak',
-                            style: GoogleFonts.comfortaa(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.ink)),
-                        if (_longestStreak > _currentStreak) ...[
-                          const SizedBox(width: 8),
-                          Text('(best: $_longestStreak)',
+                  GestureDetector(
+                    onTap: () {
+                      if (_streakService != null) {
+                        showStreakSheet(context, _streakService!);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🔥', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
+                          Text('$_currentStreak day streak',
                               style: GoogleFonts.comfortaa(
-                                  fontSize: 11,
-                                  color: AppColors.inkFaint)),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink)),
+                          if (_longestStreak > _currentStreak) ...[
+                            const SizedBox(width: 8),
+                            Text('(best: $_longestStreak)',
+                                style: GoogleFonts.comfortaa(
+                                    fontSize: 11,
+                                    color: AppColors.inkFaint)),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ],

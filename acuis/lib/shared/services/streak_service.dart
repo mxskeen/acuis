@@ -4,6 +4,7 @@ class StreakService {
   static const _lastCompletionKey = 'last_completion_date';
   static const _currentStreakKey = 'current_streak';
   static const _longestStreakKey = 'longest_streak';
+  static const _completionDatesKey = 'completion_dates';
 
   final SharedPreferences _prefs;
 
@@ -17,6 +18,18 @@ class StreakService {
   int getCurrentStreak() => _prefs.getInt(_currentStreakKey) ?? 0;
   int getLongestStreak() => _prefs.getInt(_longestStreakKey) ?? 0;
   String? getLastCompletionDate() => _prefs.getString(_lastCompletionKey);
+
+  /// Returns a set of date strings (yyyy-MM-dd) on which todos were completed.
+  Set<String> getCompletionDates() {
+    final list = _prefs.getStringList(_completionDatesKey) ?? [];
+    return list.toSet();
+  }
+
+  Future<void> _addCompletionDate(String date) async {
+    final dates = getCompletionDates();
+    dates.add(date);
+    await _prefs.setStringList(_completionDatesKey, dates.toList());
+  }
 
   Future<void> recordCompletion() async {
     final today = _getTodayString();
@@ -48,6 +61,7 @@ class StreakService {
 
     await _prefs.setString(_lastCompletionKey, today);
     await _prefs.setInt(_currentStreakKey, currentStreak);
+    await _addCompletionDate(today);
     
     // Update longest streak if needed
     final longestStreak = getLongestStreak();
