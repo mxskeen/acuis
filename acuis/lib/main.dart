@@ -116,6 +116,14 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() => goals.add(g));
               _saveData();
             },
+            onEdit: (index, g) {
+              setState(() => goals[index] = g);
+              _saveData();
+            },
+            onDelete: (index) {
+              setState(() => goals.removeAt(index));
+              _saveData();
+            },
           ),
           TodoListScreen(
             goals: goals,
@@ -128,6 +136,14 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() {
                 todos[i] = todos[i].copyWith(completed: !todos[i].completed);
               });
+              _saveData();
+            },
+            onEdit: (index, t) {
+              setState(() => todos[index] = t);
+              _saveData();
+            },
+            onDelete: (index) {
+              setState(() => todos.removeAt(index));
               _saveData();
             },
           ),

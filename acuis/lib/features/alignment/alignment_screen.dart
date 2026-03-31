@@ -169,6 +169,23 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
       );
 
   Widget _buildScoreCard(double score, int scoredCount, int linkedCount) {
+    String milestone = '';
+    String emoji = '';
+    
+    if (score >= 90) {
+      milestone = 'Perfectly Aligned';
+      emoji = '🎯';
+    } else if (score >= 75) {
+      milestone = 'Great Alignment';
+      emoji = '⭐';
+    } else if (score >= 50) {
+      milestone = 'Good Progress';
+      emoji = '📈';
+    } else if (score > 0) {
+      milestone = 'Getting Started';
+      emoji = '🌱';
+    }
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -176,50 +193,76 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
+      child: Column(
         children: [
-          SizedBox(
-            width: 80,
-            height: 80,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CircularProgressIndicator(
-                  value: score / 100,
-                  strokeWidth: 8,
-                  backgroundColor: AppColors.bg,
-                  valueColor: const AlwaysStoppedAnimation(AppColors.ink),
-                ),
-                Center(
-                  child: Text(
-                    '${score.round()}%',
-                    style: GoogleFonts.comfortaa(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
+          Row(
+            children: [
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CircularProgressIndicator(
+                      value: score / 100,
+                      strokeWidth: 8,
+                      backgroundColor: AppColors.bg,
+                      valueColor: const AlwaysStoppedAnimation(AppColors.ink),
                     ),
-                  ),
+                    Center(
+                      child: Text(
+                        '${score.round()}%',
+                        style: GoogleFonts.comfortaa(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Overall Alignment',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink)),
+                    const SizedBox(height: 6),
+                    Text('$scoredCount of $linkedCount linked todos analyzed',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 12, color: AppColors.inkFaint, height: 1.4)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Overall Alignment',
-                    style: GoogleFonts.comfortaa(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink)),
-                const SizedBox(height: 6),
-                Text('$scoredCount of $linkedCount linked todos analyzed',
-                    style: GoogleFonts.comfortaa(
-                        fontSize: 12, color: AppColors.inkFaint, height: 1.4)),
-              ],
+          if (milestone.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.chip,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Text(milestone,
+                      style: GoogleFonts.comfortaa(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink)),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
