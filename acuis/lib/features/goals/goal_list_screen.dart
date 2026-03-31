@@ -3,18 +3,23 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../main.dart';
 import '../../models/goal.dart';
+import '../../models/todo.dart';
+import '../../shared/services/ai_task_generator_service.dart';
+import '../../shared/services/storage_service.dart';
 
 class GoalListScreen extends StatefulWidget {
   final List<Goal> goals;
   final void Function(Goal) onAdd;
   final void Function(int, Goal) onEdit;
   final void Function(int) onDelete;
+  final void Function(List<Todo>) onAddTodos;
   const GoalListScreen({
     super.key,
     required this.goals,
     required this.onAdd,
     required this.onEdit,
     required this.onDelete,
+    required this.onAddTodos,
   });
   @override
   State<GoalListScreen> createState() => _GoalListScreenState();
@@ -22,6 +27,7 @@ class GoalListScreen extends StatefulWidget {
 
 class _GoalListScreenState extends State<GoalListScreen> {
   List<Goal> get goals => widget.goals;
+  final _storage = StorageService();
   
   String _getTimeBasedGreeting() {
     final hour = DateTime.now().hour;
@@ -35,6 +41,57 @@ class _GoalListScreenState extends State<GoalListScreen> {
     if (goals.length >= 5) return 'assets/illustrations/tea-lover.svg'; // 5+ goals - Taking time to plan
     if (goals.length >= 3) return 'assets/illustrations/girl-chilling-and-relaxing-while-using-phone.svg'; // 3-4 goals - Balanced
     return 'assets/illustrations/girl-with-plant.svg'; // 1-2 goals - Growing
+  }
+  
+  Future<void> _showGenerateTasksDialog(int goalIndex) async {
+    final goal = goals[goalIndex];
+    final apiKey = _storage.loadApiKeySync() ?? '';
+    
+    if (apiKey.isEmpty) {
+      _showApiKeyRequiredDialog();
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _GenerateTasksDialog(
+        goal: goal,
+        apiKey: apiKey,
+        onTasksGenerated: (todos) {
+          widget.onAddTodos(todos);
+          Navigator.pop(ctx);
+        },
+      ),
+    );
+  }
+  
+  void _showApiKeyRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('API Key Required',
+            style: GoogleFonts.comfortaa(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink)),
+        content: Text('Please set your NVIDIA API key in the Alignment tab to use AI task generation.',
+            style: GoogleFonts.comfortaa(
+                fontSize: 13, color: AppColors.inkLight, height: 1.4)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('OK',
+                style: GoogleFonts.comfortaa(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -159,6 +216,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
         itemBuilder: (_, i) => _GoalCard(
           goal: goals[i],
           onLongPress: () => _showEditSheet(i),
+          onGenerateTasks: () => _showGenerateTasksDialog(i),
         ),
       );
 
@@ -379,7 +437,12 @@ class _GoalListScreenState extends State<GoalListScreen> {
 class _GoalCard extends StatelessWidget {
   final Goal goal;
   final VoidCallback onLongPress;
-  const _GoalCard({required this.goal, required this.onLongPress});
+  final VoidCallback onGenerateTasks;
+  const _GoalCard({
+    required this.goal,
+    required this.onLongPress,
+    required this.onGenerateTasks,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -439,6 +502,29 @@ class _GoalCard extends StatelessWidget {
                   style: GoogleFonts.comfortaa(
                       fontSize: 13, color: AppColors.inkLight, height: 1.55)),
             ],
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: onGenerateTasks,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.ink,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Text('Generate Tasks',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -544,4 +630,150 @@ class _DeleteButton extends StatelessWidget {
           ),
         ),
       );
+}
+
+// ── Generate Tasks Dialog ──────────────────────────────────
+
+class _GenerateTasksDialog extends StatefulWidget {
+  final Goal goal;
+  final String apiKey;
+  final void Function(List<Todo>) onTasksGenerated;
+
+  const _GenerateTasksDialog({
+    required this.goal,
+    required this.apiKey,
+    required this.onTasksGenerated,
+  });
+
+  @override
+  State<_GenerateTasksDialog> createState() => _GenerateTasksDialogState();
+}
+
+class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
+  bool _isGenerating = true;
+  List<String>? _tasks;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _generateTasks();
+  }
+
+  Future<void> _generateTasks() async {
+    try {
+      final service = AITaskGeneratorService(apiKey: widget.apiKey);
+      final tasks = await service.generateTasks(widget.goal, maxTasks: 5);
+      setState(() {
+        _tasks = tasks;
+        _isGenerating = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isGenerating = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text('AI Task Generation',
+          style: GoogleFonts.comfortaa(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink)),
+      content: _isGenerating
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(color: AppColors.ink),
+                const SizedBox(height: 16),
+                Text('Generating actionable tasks...',
+                    style: GoogleFonts.comfortaa(
+                        fontSize: 13, color: AppColors.inkLight)),
+              ],
+            )
+          : _error != null
+              ? Text('Error: $_error',
+                  style: GoogleFonts.comfortaa(
+                      fontSize: 13, color: Colors.red))
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Generated ${_tasks!.length} tasks for:',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 13, color: AppColors.inkLight)),
+                    const SizedBox(height: 8),
+                    Text(widget.goal.title,
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink)),
+                    const SizedBox(height: 16),
+                    ..._tasks!.asMap().entries.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${entry.key + 1}. ',
+                                style: GoogleFonts.comfortaa(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.ink)),
+                            Expanded(
+                              child: Text(entry.value,
+                                  style: GoogleFonts.comfortaa(
+                                      fontSize: 13,
+                                      color: AppColors.ink,
+                                      height: 1.4)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+      actions: _isGenerating
+          ? []
+          : _error != null
+              ? [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Close',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink)),
+                  ),
+                ]
+              : [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Cancel',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.inkLight)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      final service = AITaskGeneratorService(apiKey: widget.apiKey);
+                      final todos = service.createTodosFromTasks(_tasks!, widget.goal.id);
+                      widget.onTasksGenerated(todos);
+                    },
+                    child: Text('Add All',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink)),
+                  ),
+                ],
+    );
+  }
 }

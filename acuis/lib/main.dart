@@ -124,6 +124,10 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() => goals.removeAt(index));
               _saveData();
             },
+            onAddTodos: (newTodos) {
+              setState(() => todos.addAll(newTodos));
+              _saveData();
+            },
           ),
           TodoListScreen(
             goals: goals,
