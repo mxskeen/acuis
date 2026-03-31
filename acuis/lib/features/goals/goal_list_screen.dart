@@ -9,6 +9,7 @@ import '../../shared/services/storage_service.dart';
 
 class GoalListScreen extends StatefulWidget {
   final List<Goal> goals;
+  final String? userName;
   final void Function(Goal) onAdd;
   final void Function(int, Goal) onEdit;
   final void Function(int) onDelete;
@@ -16,6 +17,7 @@ class GoalListScreen extends StatefulWidget {
   const GoalListScreen({
     super.key,
     required this.goals,
+    this.userName,
     required this.onAdd,
     required this.onEdit,
     required this.onDelete,
@@ -31,9 +33,10 @@ class _GoalListScreenState extends State<GoalListScreen> {
   
   String _getTimeBasedGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    final name = widget.userName != null ? ', ${widget.userName}' : '';
+    if (hour < 12) return 'Good morning$name';
+    if (hour < 17) return 'Good afternoon$name';
+    return 'Good evening$name';
   }
   
   String _getIllustrationForGoals() {

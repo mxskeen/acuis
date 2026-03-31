@@ -9,6 +9,7 @@ import '../../shared/services/streak_service.dart';
 class TodoListScreen extends StatefulWidget {
   final List<Goal> goals;
   final List<Todo> todos;
+  final String? userName;
   final void Function(Todo) onAdd;
   final void Function(int) onToggle;
   final void Function(int, Todo) onEdit;
@@ -17,6 +18,7 @@ class TodoListScreen extends StatefulWidget {
     super.key,
     required this.goals,
     required this.todos,
+    this.userName,
     required this.onAdd,
     required this.onToggle,
     required this.onEdit,
@@ -61,9 +63,10 @@ class _TodoListScreenState extends State<TodoListScreen> {
   
   String _getTimeBasedGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    final name = widget.userName != null ? ', ${widget.userName}' : '';
+    if (hour < 12) return 'Good morning$name';
+    if (hour < 17) return 'Good afternoon$name';
+    return 'Good evening$name';
   }
   
   String _getIllustrationForProgress() {

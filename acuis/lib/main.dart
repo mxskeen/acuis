@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'features/goals/goal_list_screen.dart';
 import 'features/todos/todo_list_screen.dart';
@@ -73,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Todo> todos = [];
   late final PageController _pageCtrl;
   final _storage = StorageService();
+  String? _userName;
 
   @override
   void initState() {
@@ -80,6 +82,23 @@ class _HomeScreenState extends State<HomeScreen> {
     _pageCtrl = PageController();
     goals = _storage.loadGoalsSync();
     todos = _storage.loadTodosSync();
+    _userName = _storage.loadUserNameSync();
+    if (_userName == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showNameDialog());
+    }
+  }
+
+  void _showNameDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _NameOnboardingDialog(
+        onSave: (name) async {
+          await _storage.saveUserName(name);
+          setState(() => _userName = name);
+        },
+      ),
+    );
   }
 
   void _saveData() {
@@ -112,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           GoalListScreen(
             goals: goals,
+            userName: _userName,
             onAdd: (g) {
               setState(() => goals.add(g));
               _saveData();
@@ -132,6 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TodoListScreen(
             goals: goals,
             todos: todos,
+            userName: _userName,
             onAdd: (t) {
               setState(() => todos.add(t));
               _saveData();
@@ -421,4 +442,99 @@ class _Tab {
   final IconData icon;
   final String label;
   const _Tab(this.icon, this.label);
+}
+
+// ── Name Onboarding Dialog ─────────────────────────────────
+class _NameOnboardingDialog extends StatefulWidget {
+  final void Function(String) onSave;
+  const _NameOnboardingDialog({required this.onSave});
+
+  @override
+  State<_NameOnboardingDialog> createState() => _NameOnboardingDialogState();
+}
+
+class _NameOnboardingDialogState extends State<_NameOnboardingDialog> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      contentPadding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(
+            'assets/illustrations/girl-with-plant.svg',
+            width: 120,
+          ),
+          const SizedBox(height: 20),
+          Text('Hey there 👋',
+              style: GoogleFonts.comfortaa(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink)),
+          const SizedBox(height: 6),
+          Text("What's your name?",
+              style: GoogleFonts.comfortaa(
+                  fontSize: 13, color: AppColors.inkLight)),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            style: GoogleFonts.comfortaa(fontSize: 15, color: AppColors.ink),
+            decoration: InputDecoration(
+              hintText: 'Your first name',
+              hintStyle: GoogleFonts.comfortaa(
+                  fontSize: 14, color: AppColors.inkFaint),
+              filled: true,
+              fillColor: AppColors.bg,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: _submit,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              decoration: BoxDecoration(
+                color: AppColors.ink,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text("Let's go",
+                    style: GoogleFonts.comfortaa(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _submit() {
+    final name = _ctrl.text.trim();
+    if (name.isNotEmpty) {
+      widget.onSave(name);
+      Navigator.pop(context);
+    }
+  }
 }

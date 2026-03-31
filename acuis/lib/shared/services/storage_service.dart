@@ -8,6 +8,7 @@ class StorageService {
   static const _goalsKey = 'acuis_goals';
   static const _todosKey = 'acuis_todos';
   static const _apiKeyKey = 'acuis_nvidia_api_key';
+  static const _userNameKey = 'acuis_user_name';
 
   static late final SharedPreferences _prefs;
 
@@ -74,5 +75,14 @@ class StorageService {
 
   String? loadApiKeySync() {
     return _prefs.getString(_apiKeyKey);
+  }
+
+  // ── User Name ────────────────────────────────────────────
+  Future<void> saveUserName(String name) async {
+    await _prefs.setString(_userNameKey, name);
+  }
+
+  String? loadUserNameSync() {
+    return _prefs.getString(_userNameKey);
   }
 }
