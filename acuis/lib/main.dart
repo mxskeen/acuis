@@ -161,19 +161,19 @@ class _HomeScreenState extends State<HomeScreen> {
             goals: goals,
             userName: _userName,
             onAdd: (g) {
-              setState(() => goals.add(g));
+              setState(() => goals = [...goals, g]);
               _saveData();
             },
             onEdit: (index, g) {
-              setState(() => goals[index] = g);
+              setState(() => goals = [...goals]..[index] = g);
               _saveData();
             },
             onDelete: (index) {
-              setState(() => goals.removeAt(index));
+              setState(() => goals = [...goals]..removeAt(index));
               _saveData();
             },
             onAddTodos: (newTodos) {
-              setState(() => todos.addAll(newTodos));
+              setState(() => todos = [...todos, ...newTodos]);
               _saveData();
             },
           ),
@@ -182,29 +182,31 @@ class _HomeScreenState extends State<HomeScreen> {
             todos: todos,
             userName: _userName,
             onAdd: (t) {
-              setState(() => todos.add(t));
+              setState(() => todos = [...todos, t]);
               _saveData();
             },
             onToggle: (i) {
               setState(() {
-                todos[i] = todos[i].copyWith(completed: !todos[i].completed);
+                final updated = [...todos];
+                updated[i] = updated[i].copyWith(completed: !updated[i].completed);
+                todos = updated;
               });
               _saveData();
             },
             onEdit: (index, t) {
-              setState(() => todos[index] = t);
+              setState(() => todos = [...todos]..[index] = t);
               _saveData();
             },
             onDelete: (index) {
-              setState(() => todos.removeAt(index));
+              setState(() => todos = [...todos]..removeAt(index));
               _saveData();
             },
           ),
           AlignmentScreen(
             goals: goals,
             todos: todos,
-            onDataChanged: () {
-              setState(() {});
+            onDataChanged: (updatedTodos) {
+              setState(() => todos = updatedTodos);
               _saveData();
             },
           ),
