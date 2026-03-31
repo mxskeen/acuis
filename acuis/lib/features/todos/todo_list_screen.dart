@@ -616,7 +616,6 @@ class _TodoCard extends StatelessWidget {
               const Icon(Icons.description_outlined,
                   size: 18, color: AppColors.inkFaint),
             ],
-            ],
           ],
         ),
       ),
