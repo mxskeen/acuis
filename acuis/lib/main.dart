@@ -67,35 +67,64 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _idx = 0;
   final List<Goal> goals = [];
+  late final PageController _pageCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageCtrl = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onTabTap(int i) {
+    setState(() => _idx = i);
+    _pageCtrl.animateToPage(i,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      TodoListScreen(goals: goals),
-      GoalListScreen(),
-      const AlignmentScreen(),
-    ];
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        child: KeyedSubtree(key: ValueKey(_idx), child: screens[_idx]),
+      body: PageView(
+        controller: _pageCtrl,
+        onPageChanged: (i) => setState(() => _idx = i),
+        physics: const BouncingScrollPhysics(),
+        children: [
+          TodoListScreen(goals: goals),
+          GoalListScreen(),
+          const AlignmentScreen(),
+        ],
       ),
       bottomNavigationBar: _NavBar(
         selected: _idx,
-        onTap: (i) => setState(() => _idx = i),
+        onTap: _onTabTap,
       ),
     );
   }
 }
 
-// ── Floating pill nav ──────────────────────────────────────
-class _NavBar extends StatelessWidget {
+// ── Dynamic Island pill nav ────────────────────────────────
+class _NavBar extends StatefulWidget {
   final int selected;
   final ValueChanged<int> onTap;
   const _NavBar({required this.selected, required this.onTap});
+
+  @override
+  State<_NavBar> createState() => _NavBarState();
+}
+
+class _NavBarState extends State<_NavBar> with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+  late final AnimationController _anim;
+  late final Animation<double> _curve;
 
   static const _tabs = [
     _Tab(Icons.check_box_outline_blank_rounded, 'Todos'),
@@ -104,75 +133,227 @@ class _NavBar extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _curve = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic);
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _NavBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Auto-collapse when tab changes (e.g. from swipe)
+    if (oldWidget.selected != widget.selected) {
+      _collapse();
+    }
+  }
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    _expanded ? _anim.forward() : _anim.reverse();
+  }
+
+  void _collapse() {
+    if (_expanded) {
+      setState(() => _expanded = false);
+      _anim.reverse();
+    }
+  }
+
+  void _selectTab(int i) {
+    widget.onTap(i);
+    _collapse();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: 6,
-        bottom: MediaQuery.of(context).padding.bottom + 8,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.ink.withValues(alpha: 0.12),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (context, child) {
+        final expandProgress = _curve.value;
+        // Pill dimensions interpolation
+        final pillHeight = 44.0 + (expandProgress * 56);  // 44 → 100
+        final pillHPad = 4.0 + (expandProgress * 12);     // 4 → 16
+        final pillRadius = 25.0 + (expandProgress * 8);   // 25 → 33
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dismiss barrier (invisible, catches taps outside)
+            if (_expanded)
+              GestureDetector(
+                onTap: _collapse,
+                behavior: HitTestBehavior.opaque,
+                child: const SizedBox(height: 0),
+              ),
+            Padding(
+              padding: EdgeInsets.only(
+                top: 6,
+                bottom: bottomPad + 8,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: _expanded ? null : _toggle,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOutCubic,
+                      height: pillHeight,
+                      padding: EdgeInsets.symmetric(horizontal: pillHPad),
+                      decoration: BoxDecoration(
+                        color: AppColors.ink,
+                        borderRadius: BorderRadius.circular(pillRadius),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.ink.withValues(
+                              alpha: 0.10 + (expandProgress * 0.15),
+                            ),
+                            blurRadius: 12 + (expandProgress * 16),
+                            offset: Offset(0, 4 + (expandProgress * 4)),
+                          ),
+                        ],
+                      ),
+                      child: _expanded
+                          ? _buildExpanded()
+                          : _buildCollapsed(),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
-        ),
-        child: Row(
+        );
+      },
+    );
+  }
+
+  Widget _buildCollapsed() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(_tabs.length, (i) {
+        final isSelected = i == widget.selected;
+        return GestureDetector(
+          onTap: () => _selectTab(i),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: isSelected ? 14 : 12,
+              vertical: 6,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _tabs[i].icon,
+                  size: 15,
+                  color: isSelected ? AppColors.ink : Colors.white54,
+                ),
+                if (isSelected) ...[
+                  const SizedBox(width: 5),
+                  Text(
+                    _tabs[i].label,
+                    style: GoogleFonts.comfortaa(
+                      color: AppColors.ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildExpanded() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
           mainAxisSize: MainAxisSize.min,
           children: List.generate(_tabs.length, (i) {
-            final isSelected = i == selected;
+            final isSelected = i == widget.selected;
             return GestureDetector(
-              onTap: () => onTap(i),
+              onTap: () => _selectTab(i),
               behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
-                margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSelected ? 14 : 12,
-                  vertical: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.surface : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
+                  color: isSelected
+                      ? AppColors.surface
+                      : AppColors.ink.withValues(alpha: 0.0),
+                  borderRadius: BorderRadius.circular(22),
+                  border: isSelected
+                      ? null
+                      : Border.all(
+                          color: Colors.white12,
+                          width: 1,
+                        ),
                 ),
-                child: Row(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       _tabs[i].icon,
-                      size: 15,
-                      color: isSelected ? AppColors.ink : Colors.white54,
+                      size: 20,
+                      color: isSelected ? AppColors.ink : Colors.white70,
                     ),
-                    if (isSelected) ...[
-                      const SizedBox(width: 5),
-                      Text(
-                        _tabs[i].label,
-                        style: GoogleFonts.comfortaa(
-                          color: AppColors.ink,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          letterSpacing: 0.2,
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _tabs[i].label,
+                      style: GoogleFonts.comfortaa(
+                        color: isSelected ? AppColors.ink : Colors.white70,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 10,
+                        letterSpacing: 0.3,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
             );
           }),
         ),
-      )],
-      ),
+        const SizedBox(height: 6),
+        // Swipe indicator
+        Container(
+          width: 32,
+          height: 3,
+          decoration: BoxDecoration(
+            color: Colors.white24,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
     );
   }
 }
