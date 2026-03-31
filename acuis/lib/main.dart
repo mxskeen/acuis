@@ -100,32 +100,34 @@ class _NavBar extends StatelessWidget {
   static const _tabs = [
     _Tab(Icons.check_box_outline_blank_rounded, 'Todos'),
     _Tab(Icons.outlined_flag_rounded, 'Goals'),
-    _Tab(Icons.bar_chart_rounded, 'Alignment'),
+    _Tab(Icons.bar_chart_rounded, 'Align'),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.bg,
+    return Padding(
       padding: EdgeInsets.only(
-        left: 16, right: 16, top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
+        top: 6,
+        bottom: MediaQuery.of(context).padding.bottom + 8,
       ),
-      child: Container(
-        height: 58,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           color: AppColors.ink,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
-              color: AppColors.ink.withValues(alpha: 0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
+              color: AppColors.ink.withValues(alpha: 0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisSize: MainAxisSize.min,
           children: List.generate(_tabs.length, (i) {
             final isSelected = i == selected;
             return GestureDetector(
@@ -134,31 +136,32 @@ class _NavBar extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
+                margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
                 padding: EdgeInsets.symmetric(
-                  horizontal: isSelected ? 18 : 14,
-                  vertical: 8,
+                  horizontal: isSelected ? 14 : 12,
+                  vertical: 6,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.surface : Colors.transparent,
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       _tabs[i].icon,
-                      size: 17,
-                      color: isSelected ? AppColors.ink : Colors.white60,
+                      size: 15,
+                      color: isSelected ? AppColors.ink : Colors.white54,
                     ),
                     if (isSelected) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 5),
                       Text(
                         _tabs[i].label,
                         style: GoogleFonts.comfortaa(
                           color: AppColors.ink,
                           fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          letterSpacing: 0.1,
+                          fontSize: 11,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ],
@@ -168,6 +171,7 @@ class _NavBar extends StatelessWidget {
             );
           }),
         ),
+      )],
       ),
     );
   }
