@@ -44,7 +44,8 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y clang cmake ninja-build libgtk-3-dev
+          sudo apt-get install -y clang cmake ninja-build libgtk-3-dev \
+            dpkg-dev alien fakeroot imagemagick wget
 
       - uses: subosito/flutter-action@v2
         with:
@@ -62,8 +63,69 @@ jobs:
         run: flutter build linux --release
         working-directory: acuis
 
-      - name: Zip Linux build
-        run: zip -r acuis-linux.zip acuis/build/linux/x64/release/bundle
+      # ── .deb ──────────────────────────────────────────────
+      - name: Package .deb
+        run: |
+          BUNDLE=acuis/build/linux/x64/release/bundle
+          PKG=pkg-deb/usr/lib/acuis
+          mkdir -p $PKG
+          cp -r $BUNDLE/* $PKG/
+          mkdir -p pkg-deb/usr/bin
+          ln -s /usr/lib/acuis/acuis pkg-deb/usr/bin/acuis
+          mkdir -p pkg-deb/DEBIAN
+          cat > pkg-deb/DEBIAN/control <<EOF
+          Package: acuis
+          Version: 1.0.0
+          Architecture: amd64
+          Maintainer: acuis
+          Description: Goal tracking app with visual progress feedback
+          EOF
+          fakeroot dpkg-deb --build pkg-deb acuis.deb
+
+      # ── .rpm (converted from .deb via alien) ──────────────
+      - name: Package .rpm
+        run: |
+          sudo alien --to-rpm --scripts acuis.deb
+          mv acuis*.rpm acuis.rpm
+
+      # ── .AppImage ─────────────────────────────────────────
+      - name: Package .AppImage
+        run: |
+          BUNDLE=acuis/build/linux/x64/release/bundle
+          APPDIR=AppDir
+          mkdir -p $APPDIR/usr/bin $APPDIR/usr/lib/acuis $APPDIR/usr/share/icons/hicolor/256x256/apps
+          cp -r $BUNDLE/* $APPDIR/usr/lib/acuis/
+          ln -s /usr/lib/acuis/acuis $APPDIR/usr/bin/acuis
+
+          # Icon — convert PNG to 256x256 if present, else create a placeholder
+          if [ -f acuis/assets/icon.png ]; then
+            convert acuis/assets/icon.png -resize 256x256 $APPDIR/usr/share/icons/hicolor/256x256/apps/acuis.png
+            cp $APPDIR/usr/share/icons/hicolor/256x256/apps/acuis.png $APPDIR/acuis.png
+          fi
+
+          cat > $APPDIR/acuis.desktop <<EOF
+          [Desktop Entry]
+          Name=acuis
+          Exec=acuis
+          Icon=acuis
+          Type=Application
+          Categories=Utility;
+          EOF
+
+          cat > $APPDIR/AppRun <<'APPRUN'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/lib/acuis/acuis" "$@"
+          APPRUN
+          chmod +x $APPDIR/AppRun
+
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool-x86_64.AppImage
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage $APPDIR acuis.AppImage
+
+      # ── Zip all three together ─────────────────────────────
+      - name: Zip Linux packages
+        run: zip acuis-linux.zip acuis.deb acuis.rpm acuis.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
@@ -135,8 +197,10 @@ jobs:
           body: |
             Automated build from commit ${{ github.sha }}
 
-            **Android:** Install `app-release.apk` directly on your device.
-            **Linux:** Extract `acuis-linux.zip` and run the `acuis` binary.
+            **Android:** Install `app-release.apk` directly on your device (enable "Install from unknown sources").
+            **Linux (Debian/Ubuntu):** `sudo dpkg -i acuis.deb`
+            **Linux (Fedora/RHEL):** `sudo rpm -i acuis.rpm`
+            **Linux (any distro):** `chmod +x acuis.AppImage && ./acuis.AppImage`
             **Windows:** Extract `acuis-windows.zip` and run `acuis.exe`.
           files: |
             artifacts/android/app-release.apk
