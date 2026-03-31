@@ -8,8 +8,9 @@ import 'models/goal.dart';
 import 'models/todo.dart';
 import 'shared/services/storage_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await StorageService.init();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
@@ -77,16 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _pageCtrl = PageController();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    final loadedGoals = await _storage.loadGoals();
-    final loadedTodos = await _storage.loadTodos();
-    setState(() {
-      goals = loadedGoals;
-      todos = loadedTodos;
-    });
+    goals = _storage.loadGoalsSync();
+    todos = _storage.loadTodosSync();
   }
 
   void _saveData() {

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../main.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
+import 'widgets/impact_quadrant.dart';
 import '../../shared/services/ai_alignment_service.dart';
 import '../../shared/services/storage_service.dart';
 
@@ -30,14 +31,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   @override
   void initState() {
     super.initState();
-    _loadApiKey();
-  }
-
-  Future<void> _loadApiKey() async {
-    final key = await _storage.loadApiKey();
-    if (key != null && mounted) {
-      setState(() => _apiKey = key);
-    }
+    _apiKey = _storage.loadApiKeySync() ?? '';
   }
 
   Future<void> _analyze() async {
@@ -99,7 +93,9 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   children: [
                     _buildScoreCard(overallScore, scoredTodos.length, linkedTodos.length),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 36),
+                    ImpactQuadrant(todos: widget.todos),
+                    const SizedBox(height: 36),
                     Text('Goals Breakdown',
                         style: GoogleFonts.comfortaa(
                             fontSize: 16,
