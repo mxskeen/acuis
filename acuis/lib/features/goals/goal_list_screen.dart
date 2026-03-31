@@ -655,6 +655,7 @@ class _GenerateTasksDialog extends StatefulWidget {
 class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
   bool _isGenerating = true;
   List<String>? _tasks;
+  List<TextEditingController> _controllers = [];
   String? _error;
 
   @override
@@ -663,12 +664,19 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
     _generateTasks();
   }
 
+  @override
+  void dispose() {
+    for (final c in _controllers) c.dispose();
+    super.dispose();
+  }
+
   Future<void> _generateTasks() async {
     try {
       final service = AITaskGeneratorService(apiKey: widget.apiKey);
       final tasks = await service.generateTasks(widget.goal, maxTasks: 5);
       setState(() {
         _tasks = tasks;
+        _controllers = tasks.map((t) => TextEditingController(text: t)).toList();
         _isGenerating = false;
       });
     } catch (e) {
@@ -708,36 +716,14 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Generated ${_tasks!.length} tasks for:',
+                    Text('Tap ✏️ to edit any task before adding',
                         style: GoogleFonts.comfortaa(
-                            fontSize: 13, color: AppColors.inkLight)),
-                    const SizedBox(height: 8),
-                    Text(widget.goal.title,
-                        style: GoogleFonts.comfortaa(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ink)),
-                    const SizedBox(height: 16),
-                    ..._tasks!.asMap().entries.map((entry) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('${entry.key + 1}. ',
-                                style: GoogleFonts.comfortaa(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.ink)),
-                            Expanded(
-                              child: Text(entry.value,
-                                  style: GoogleFonts.comfortaa(
-                                      fontSize: 13,
-                                      color: AppColors.ink,
-                                      height: 1.4)),
-                            ),
-                          ],
-                        ),
+                            fontSize: 12, color: AppColors.inkFaint)),
+                    const SizedBox(height: 12),
+                    ..._controllers.asMap().entries.map((entry) {
+                      return _EditableTaskRow(
+                        index: entry.key,
+                        controller: entry.value,
                       );
                     }),
                   ],
@@ -766,8 +752,12 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                   ),
                   TextButton(
                     onPressed: () {
+                      final editedTasks = _controllers
+                          .map((c) => c.text.trim())
+                          .where((t) => t.isNotEmpty)
+                          .toList();
                       final service = AITaskGeneratorService(apiKey: widget.apiKey);
-                      final todos = service.createTodosFromTasks(_tasks!, widget.goal.id);
+                      final todos = service.createTodosFromTasks(editedTasks, widget.goal.id);
                       widget.onTasksGenerated(todos);
                     },
                     child: Text('Add All',
@@ -777,6 +767,72 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                             color: AppColors.ink)),
                   ),
                 ],
+    );
+  }
+}
+
+class _EditableTaskRow extends StatefulWidget {
+  final int index;
+  final TextEditingController controller;
+  const _EditableTaskRow({required this.index, required this.controller});
+
+  @override
+  State<_EditableTaskRow> createState() => _EditableTaskRowState();
+}
+
+class _EditableTaskRowState extends State<_EditableTaskRow> {
+  bool _editing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text('${widget.index + 1}.',
+              style: GoogleFonts.comfortaa(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.inkLight)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _editing
+                ? TextField(
+                    controller: widget.controller,
+                    autofocus: true,
+                    style: GoogleFonts.comfortaa(
+                        fontSize: 13, color: AppColors.ink),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      fillColor: AppColors.bg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                    ),
+                    onSubmitted: (_) => setState(() => _editing = false),
+                  )
+                : Text(widget.controller.text,
+                    style: GoogleFonts.comfortaa(
+                        fontSize: 13,
+                        color: AppColors.ink,
+                        height: 1.4)),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => setState(() => _editing = !_editing),
+            child: Icon(
+              _editing ? Icons.check_rounded : Icons.edit_outlined,
+              size: 16,
+              color: _editing ? AppColors.ink : AppColors.inkFaint,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

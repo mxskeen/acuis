@@ -18,6 +18,48 @@ class AITaskGeneratorService {
     this.model = _defaultModel,
   });
 
+  /// Fetch a short reason why this task helps achieve the goal
+  Future<String> fetchTaskReason(String taskTitle, Goal goal) async {
+    final prompt = '''
+In 2-3 sentences, explain why this specific task is important for achieving the goal.
+Be encouraging and concrete. No bullet points, just plain text.
+
+Goal: ${goal.title}
+Task: $taskTitle
+
+Return ONLY the explanation text, nothing else.
+''';
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'model': model,
+          'messages': [
+            {'role': 'user', 'content': prompt}
+          ],
+          'max_tokens': 128,
+          'temperature': 0.6,
+          'stream': false,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content'].toString().trim();
+      } else {
+        throw Exception('API error ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch reason: $e');
+    }
+  }
+
   /// Generate actionable tasks from a goal
   Future<List<String>> generateTasks(Goal goal, {int maxTasks = 5}) async {
     final timeframe = goal.type == GoalType.shortTerm 
@@ -81,13 +123,13 @@ Make tasks:
 
   /// Generate todos from tasks
   List<Todo> createTodosFromTasks(List<String> tasks, String goalId) {
-    return tasks.map((task) {
+    return tasks.asMap().entries.map((entry) {
       return Todo(
-        id: DateTime.now().millisecondsSinceEpoch.toString() + 
-            tasks.indexOf(task).toString(),
-        title: task,
+        id: DateTime.now().millisecondsSinceEpoch.toString() + entry.key.toString(),
+        title: entry.value,
         goalId: goalId,
         createdAt: DateTime.now(),
+        aiGenerated: true,
       );
     }).toList();
   }

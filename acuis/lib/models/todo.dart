@@ -6,6 +6,8 @@ class Todo {
   final DateTime createdAt;
   final double? alignmentScore;
   final String? alignmentExplanation;
+  final bool aiGenerated;
+  final String? aiReason;
 
   Todo({
     required this.id,
@@ -15,6 +17,8 @@ class Todo {
     required this.createdAt,
     this.alignmentScore,
     this.alignmentExplanation,
+    this.aiGenerated = false,
+    this.aiReason,
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +29,8 @@ class Todo {
         'createdAt': createdAt.toIso8601String(),
         'alignmentScore': alignmentScore,
         'alignmentExplanation': alignmentExplanation,
+        'aiGenerated': aiGenerated,
+        'aiReason': aiReason,
       };
 
   factory Todo.fromJson(Map<String, dynamic> json) => Todo(
@@ -35,6 +41,8 @@ class Todo {
         createdAt: DateTime.parse(json['createdAt']),
         alignmentScore: json['alignmentScore']?.toDouble(),
         alignmentExplanation: json['alignmentExplanation'],
+        aiGenerated: json['aiGenerated'] ?? false,
+        aiReason: json['aiReason'],
       );
 
   Todo copyWith({
@@ -45,6 +53,8 @@ class Todo {
     DateTime? createdAt,
     double? alignmentScore,
     String? alignmentExplanation,
+    bool? aiGenerated,
+    String? aiReason,
   }) =>
       Todo(
         id: id ?? this.id,
@@ -54,5 +64,7 @@ class Todo {
         createdAt: createdAt ?? this.createdAt,
         alignmentScore: alignmentScore ?? this.alignmentScore,
         alignmentExplanation: alignmentExplanation ?? this.alignmentExplanation,
+        aiGenerated: aiGenerated ?? this.aiGenerated,
+        aiReason: aiReason ?? this.aiReason,
       );
 }

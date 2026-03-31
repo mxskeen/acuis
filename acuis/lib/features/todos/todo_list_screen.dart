@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../main.dart';
 import '../../models/todo.dart';
 import '../../models/goal.dart';
+import '../../shared/services/ai_task_generator_service.dart';
+import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 
 class TodoListScreen extends StatefulWidget {
@@ -537,9 +539,27 @@ class _TodoCard extends StatelessWidget {
     required this.onLongPress,
   });
 
+  void _showReasonSheet(BuildContext context, Goal goal) {
+    final apiKey = StorageService().loadApiKeySync() ?? '';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => _ReasonSheet(
+        todo: todo,
+        goal: goal,
+        apiKey: apiKey,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final goal = goals.where((g) => g.id == todo.goalId).firstOrNull;
+    final showPaper = todo.aiGenerated && goal != null;
+
     return GestureDetector(
       onTap: onToggle,
       onLongPress: onLongPress,
@@ -596,8 +616,135 @@ class _TodoCard extends StatelessWidget {
                 ],
               ),
             ),
+            if (showPaper) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _showReasonSheet(context, goal),
+                behavior: HitTestBehavior.opaque,
+                child: const Icon(
+                  Icons.description_outlined,
+                  size: 18,
+                  color: AppColors.inkFaint,
+                ),
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Reason Sheet ───────────────────────────────────────────
+
+class _ReasonSheet extends StatefulWidget {
+  final Todo todo;
+  final Goal goal;
+  final String apiKey;
+  const _ReasonSheet({
+    required this.todo,
+    required this.goal,
+    required this.apiKey,
+  });
+
+  @override
+  State<_ReasonSheet> createState() => _ReasonSheetState();
+}
+
+class _ReasonSheetState extends State<_ReasonSheet> {
+  bool _loading = true;
+  String? _reason;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReason();
+  }
+
+  Future<void> _fetchReason() async {
+    if (widget.apiKey.isEmpty) {
+      setState(() {
+        _error = 'No API key set. Add it in the Alignment tab.';
+        _loading = false;
+      });
+      return;
+    }
+    try {
+      final service = AITaskGeneratorService(apiKey: widget.apiKey);
+      final reason = await service.fetchTaskReason(widget.todo.title, widget.goal);
+      setState(() {
+        _reason = reason;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              const Icon(Icons.description_outlined, size: 18, color: AppColors.ink),
+              const SizedBox(width: 8),
+              Text('Why this task?',
+                  style: GoogleFonts.comfortaa(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(widget.todo.title,
+              style: GoogleFonts.comfortaa(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkLight)),
+          const SizedBox(height: 20),
+          if (_loading)
+            Row(
+              children: [
+                const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+                ),
+                const SizedBox(width: 12),
+                Text('Thinking...',
+                    style: GoogleFonts.comfortaa(
+                        fontSize: 13, color: AppColors.inkLight)),
+              ],
+            )
+          else if (_error != null)
+            Text(_error!,
+                style: GoogleFonts.comfortaa(
+                    fontSize: 13, color: Colors.red, height: 1.5))
+          else
+            Text(_reason!,
+                style: GoogleFonts.comfortaa(
+                    fontSize: 14,
+                    color: AppColors.ink,
+                    height: 1.6)),
+        ],
       ),
     );
   }
