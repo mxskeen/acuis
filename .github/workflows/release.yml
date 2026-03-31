@@ -88,13 +88,15 @@ jobs:
       - name: Package .rpm
         run: |
           BUNDLE=acuis/build/linux/x64/release/bundle
+          BUILDROOT=~/rpmbuild/BUILDROOT/acuis-1.0.0-1.x86_64
           mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          mkdir -p ~/rpmbuild/BUILDROOT/acuis-1.0.0-1.x86_64/usr/lib/acuis
-          mkdir -p ~/rpmbuild/BUILDROOT/acuis-1.0.0-1.x86_64/usr/bin
-          cp -r $BUNDLE/* ~/rpmbuild/BUILDROOT/acuis-1.0.0-1.x86_64/usr/lib/acuis/
-          ln -s /usr/lib/acuis/acuis ~/rpmbuild/BUILDROOT/acuis-1.0.0-1.x86_64/usr/bin/acuis
-          printf 'Name: acuis\nVersion: 1.0.0\nRelease: 1\nSummary: Goal tracking app\nLicense: Proprietary\nBuildArch: x86_64\n%%description\nGoal tracking app.\n%%install\n%%files\n/usr/lib/acuis\n/usr/bin/acuis\n%%changelog\n' > ~/rpmbuild/SPECS/acuis.spec
-          rpmbuild -bb ~/rpmbuild/SPECS/acuis.spec
+          mkdir -p $BUILDROOT/usr/lib/acuis
+          mkdir -p $BUILDROOT/usr/bin
+          cp -r $BUNDLE/* $BUILDROOT/usr/lib/acuis/
+          printf '#!/bin/bash\nexec /usr/lib/acuis/acuis "$@"\n' > $BUILDROOT/usr/bin/acuis
+          chmod +x $BUILDROOT/usr/bin/acuis
+          printf 'Name: acuis\nVersion: 1.0.0\nRelease: 1\nSummary: Goal tracking app\nLicense: Proprietary\nBuildArch: x86_64\n%%description\nGoal tracking app.\n%%install\n%%files\n%%defattr(-,root,root,-)\n/usr/lib/acuis\n/usr/bin/acuis\n%%changelog\n' > ~/rpmbuild/SPECS/acuis.spec
+          rpmbuild -bb --define "_topdir $HOME/rpmbuild" --define "_build_id_links none" ~/rpmbuild/SPECS/acuis.spec
           mv ~/rpmbuild/RPMS/x86_64/acuis-*.rpm acuis.rpm
 
       # ── .AppImage ─────────────────────────────────────────

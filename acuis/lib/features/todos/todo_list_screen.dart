@@ -549,10 +549,9 @@ class _TodoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final goal = goals.where((g) => g.id == todo.goalId).firstOrNull;
-    final showPaper = todo.aiGenerated && goal != null;
 
     return GestureDetector(
-      onTap: onToggle,
+      onTap: goal != null ? () => _showReasonSheet(context, goal) : null,
       onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -565,21 +564,26 @@ class _TodoCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: todo.completed ? AppColors.ink : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: todo.completed ? AppColors.ink : AppColors.inkFaint,
-                  width: 1.8,
+            // Checkbox — only this toggles completion
+            GestureDetector(
+              onTap: onToggle,
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: todo.completed ? AppColors.ink : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: todo.completed ? AppColors.ink : AppColors.inkFaint,
+                    width: 1.8,
+                  ),
                 ),
+                child: todo.completed
+                    ? const Icon(Icons.check, size: 13, color: Colors.white)
+                    : null,
               ),
-              child: todo.completed
-                  ? const Icon(Icons.check, size: 13, color: Colors.white)
-                  : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -607,17 +611,11 @@ class _TodoCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (showPaper) ...[
+            if (goal != null) ...[
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () => _showReasonSheet(context, goal),
-                behavior: HitTestBehavior.opaque,
-                child: const Icon(
-                  Icons.description_outlined,
-                  size: 18,
-                  color: AppColors.inkFaint,
-                ),
-              ),
+              const Icon(Icons.description_outlined,
+                  size: 18, color: AppColors.inkFaint),
+            ],
             ],
           ],
         ),
@@ -654,6 +652,15 @@ class _ReasonSheetState extends State<_ReasonSheet> {
   }
 
   Future<void> _fetchReason() async {
+    // Use cached explanation if available — no API call needed
+    if (widget.todo.alignmentExplanation != null &&
+        widget.todo.alignmentExplanation!.isNotEmpty) {
+      setState(() {
+        _reason = widget.todo.alignmentExplanation;
+        _loading = false;
+      });
+      return;
+    }
     if (widget.apiKey.isEmpty) {
       setState(() {
         _error = 'No API key set. Add it in the Alignment tab.';
