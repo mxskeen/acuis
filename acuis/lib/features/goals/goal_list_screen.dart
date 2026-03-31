@@ -5,6 +5,7 @@ import '../../main.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
 import '../../shared/services/ai_task_generator_service.dart';
+import '../../models/smart_scores.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
@@ -702,7 +703,7 @@ class _GenerateTasksDialog extends StatefulWidget {
 
 class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
   bool _isGenerating = true;
-  List<String>? _tasks;
+  List<GeneratedTask>? _tasks;
   List<TextEditingController> _controllers = [];
   String? _error;
 
@@ -722,16 +723,20 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
     try {
       final service = AITaskGeneratorService(apiKey: widget.apiKey);
       final tasks = await service.generateTasks(widget.goal, maxTasks: 5);
-      setState(() {
-        _tasks = tasks;
-        _controllers = tasks.map((t) => TextEditingController(text: t)).toList();
-        _isGenerating = false;
-      });
+      if (mounted) {
+        setState(() {
+          _tasks = tasks;
+          _controllers = tasks.map((t) => TextEditingController(text: t.title)).toList();
+          _isGenerating = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isGenerating = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isGenerating = false;
+        });
+      }
     }
   }
 
@@ -800,10 +805,23 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                   ),
                   TextButton(
                     onPressed: () {
-                      final editedTasks = _controllers
-                          .map((c) => c.text.trim())
-                          .where((t) => t.isNotEmpty)
-                          .toList();
+                      // Create updated tasks with edited titles
+                      final editedTasks = <GeneratedTask>[];
+                      for (int i = 0; i < (_tasks?.length ?? 0); i++) {
+                        final original = _tasks![i];
+                        final editedTitle = _controllers[i].text.trim();
+                        if (editedTitle.isNotEmpty) {
+                          editedTasks.add(GeneratedTask(
+                            title: editedTitle,
+                            effort: original.effort,
+                            eisenhowerClass: original.eisenhowerClass,
+                            smartScores: original.smartScores,
+                            reason: original.reason,
+                            bestTime: original.bestTime,
+                            estimatedMinutes: original.estimatedMinutes,
+                          ));
+                        }
+                      }
                       final service = AITaskGeneratorService(apiKey: widget.apiKey);
                       final todos = service.createTodosFromTasks(editedTasks, widget.goal.id);
                       widget.onTasksGenerated(todos);

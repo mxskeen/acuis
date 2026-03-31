@@ -3,16 +3,24 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../main.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
-import 'widgets/impact_quadrant.dart';
-import 'widgets/alignment_detail_sheet.dart';
+import '../../models/alignment_result.dart';
+import '../../models/smart_scores.dart';
 import '../../shared/services/ai_alignment_service.dart';
 import '../../shared/services/storage_service.dart';
+import '../../shared/services/velocity_service.dart';
+import '../../shared/services/gamification_service.dart';
+import '../../shared/services/streak_service.dart';
+import '../../shared/widgets/celebration_overlay.dart';
+import 'widgets/eisenhower_quadrant.dart';
+import 'widgets/science_backed_growth_chart.dart';
+import 'widgets/smart_radar_chart.dart';
+import 'widgets/alignment_detail_sheet.dart';
 
 class AlignmentScreen extends StatefulWidget {
   final List<Goal> goals;
   final List<Todo> todos;
   final void Function(List<Todo> updatedTodos) onDataChanged;
-  
+
   const AlignmentScreen({
     super.key,
     required this.goals,
@@ -28,11 +36,22 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   final _storage = StorageService();
   bool _isAnalyzing = false;
   String _apiKey = '';
+  late VelocityService _velocityService;
+  late GamificationService _gamificationService;
+  late StreakService _streakService;
 
   @override
   void initState() {
     super.initState();
     _apiKey = _storage.loadApiKeySync() ?? '';
+    _initServices();
+  }
+
+  Future<void> _initServices() async {
+    _streakService = await StreakService.init();
+    _velocityService = await VelocityService.init();
+    _gamificationService = await GamificationService.init();
+    if (mounted) setState(() {});
   }
 
   Future<void> _analyze() async {
@@ -42,23 +61,47 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     }
 
     setState(() => _isAnalyzing = true);
-    
+
     try {
       final service = AIAlignmentService(apiKey: _apiKey);
-      final results = await service.analyzeAll(widget.todos, widget.goals);
-      
-      // Build a new list with updated scores — never mutate widget.todos directly
+
+      // Build context with velocity data
+      final velocity = _velocityService.getVelocity(7);
+      final context = ScoringContext(
+        velocity: velocity,
+        daysUntilTarget: widget.goals.isNotEmpty
+            ? widget.goals.first.daysRemaining
+            : 30,
+        currentStreak: _streakService.getCurrentStreak(),
+      );
+
+      final results = await service.analyzeAll(widget.todos, widget.goals, context: context);
+
+      // Build a new list with updated scores
       final updatedTodos = widget.todos.map((todo) {
         if (results.containsKey(todo.id)) {
+          final result = results[todo.id]!;
           return todo.copyWith(
-            alignmentScore: results[todo.id]!.score,
-            alignmentExplanation: results[todo.id]!.explanation,
+            alignmentScore: result.score,
+            alignmentExplanation: result.explanation,
+            smartScores: result.smartScores,
+            eisenhowerClass: result.eisenhowerClass,
+            estimatedEffort: result.estimatedEffort?.index != null
+                ? result.estimatedEffort!.index + 1
+                : todo.estimatedEffort,
+            improvementSuggestion: result.suggestion,
           );
         }
         return todo;
       }).toList();
 
       widget.onDataChanged(updatedTodos);
+
+      // Check for celebrations
+      _checkCelebrations(updatedTodos);
+
+      // Record velocity snapshot
+      await _velocityService.recordDaySnapshot(updatedTodos);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -70,11 +113,54 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     }
   }
 
+  void _checkCelebrations(List<Todo> todos) {
+    // Check for high alignment completions
+    for (final todo in todos.where((t) => t.completed)) {
+      final goal = widget.goals.firstWhere(
+        (g) => g.id == todo.goalId,
+        orElse: () => widget.goals.first,
+      );
+
+      final celebration = _gamificationService.checkCelebration(todo, goal);
+      if (celebration != null) {
+        showCelebration(context, celebration);
+
+        // Add points
+        final levelUp = _gamificationService.addPoints(celebration.points);
+        if (levelUp != null) {
+          // Show level up after celebration
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              showCelebration(
+                context,
+                Celebration.levelUp(level: levelUp.newLevel, points: levelUp.totalPoints),
+              );
+            }
+          });
+        }
+        break; // Only show one celebration at a time
+      }
+    }
+
+    // Check for achievements
+    final newAchievements = _gamificationService.checkAchievements(widget.goals, todos);
+    if (newAchievements.isNotEmpty) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          showCelebration(
+            context,
+            Celebration.achievementUnlocked(newAchievements.first),
+          );
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final linkedTodos = widget.todos.where((t) => t.goalId != null).toList();
     final scoredTodos = linkedTodos.where((t) => t.alignmentScore != null).toList();
-    
+
     double overallScore = 0;
     if (scoredTodos.isNotEmpty) {
       overallScore = scoredTodos.map((t) => t.alignmentScore!).reduce((a, b) => a + b) / scoredTodos.length;
@@ -103,9 +189,59 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                       ),
                       child: _buildScoreCard(overallScore, scoredTodos.length, linkedTodos.length),
                     ),
-                    const SizedBox(height: 36),
-                    ImpactQuadrant(todos: widget.todos),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 24),
+
+                    // Streak & Level card
+                    _buildStreakLevelCard(),
+
+                    const SizedBox(height: 24),
+
+                    // Eisenhower Quadrant (replaces Impact Quadrant)
+                    EisenhowerQuadrant(
+                      todos: linkedTodos,
+                      onReclassify: (todo, newClass) {
+                        final updated = widget.todos.map((t) {
+                          if (t.id == todo.id) {
+                            return t.copyWith(eisenhowerClass: newClass);
+                          }
+                          return t;
+                        }).toList();
+                        widget.onDataChanged(updated);
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Growth Charts per goal
+                    Text('Progress Charts',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink)),
+                    const SizedBox(height: 4),
+                    Text('Velocity-based projections with confidence',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 12, color: AppColors.inkFaint)),
+                    const SizedBox(height: 12),
+
+                    ...widget.goals.map((goal) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: ScienceBackedGrowthChart(
+                        goal: goal,
+                        todos: widget.todos,
+                        velocityService: _velocityService,
+                      ),
+                    )),
+
+                    const SizedBox(height: 24),
+
+                    // SMART breakdown for goals
+                    if (scoredTodos.any((t) => t.smartScores != null))
+                      _buildSMARTBreakdown(scoredTodos),
+
+                    const SizedBox(height: 24),
+
+                    // Goals Breakdown
                     Text('Goals Breakdown',
                         style: GoogleFonts.comfortaa(
                             fontSize: 16,
@@ -113,6 +249,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                             color: AppColors.ink)),
                     const SizedBox(height: 12),
                     ...widget.goals.map(_buildGoalStatsCard),
+
                     const SizedBox(height: 24),
                     _buildAnalyzeButton(),
                   ],
@@ -142,7 +279,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                         height: 1.1,
                       )),
                   const SizedBox(height: 3),
-                  Text('How your work connects to your goals',
+                  Text('Science-backed goal alignment',
                       style: GoogleFonts.comfortaa(
                           fontSize: 12, color: AppColors.inkLight)),
                 ],
@@ -181,7 +318,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   Widget _buildScoreCard(double score, int scoredCount, int linkedCount) {
     String milestone = '';
     String emoji = '';
-    
+
     if (score >= 90) {
       milestone = 'Perfectly Aligned';
       emoji = '🎯';
@@ -195,7 +332,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
       milestone = 'Getting Started';
       emoji = '🌱';
     }
-    
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -290,15 +427,254 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     );
   }
 
+  Widget _buildStreakLevelCard() {
+    final streak = _streakService.getCurrentStreak();
+    final longestStreak = _streakService.getLongestStreak();
+    final level = _gamificationService.getLevel();
+    final points = _gamificationService.getTotalPoints();
+    final levelProgress = _gamificationService.getLevelProgress();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          // Streak
+          Expanded(
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$streak',
+                      style: GoogleFonts.comfortaa(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: streak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'day streak',
+                  style: GoogleFonts.comfortaa(
+                    fontSize: 11,
+                    color: AppColors.inkFaint,
+                  ),
+                ),
+                if (longestStreak > streak)
+                  Text(
+                    'Best: $longestStreak',
+                    style: GoogleFonts.comfortaa(
+                      fontSize: 9,
+                      color: AppColors.inkFaint,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Divider
+          Container(
+            width: 1,
+            height: 50,
+            color: AppColors.border,
+          ),
+
+          // Level
+          Expanded(
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('⭐', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Lv.$level',
+                      style: GoogleFonts.comfortaa(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: levelProgress,
+                    minHeight: 4,
+                    backgroundColor: AppColors.border,
+                    valueColor: const AlwaysStoppedAnimation(Color(0xFFFFB700)),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$points pts',
+                  style: GoogleFonts.comfortaa(
+                    fontSize: 9,
+                    color: AppColors.inkFaint,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSMARTBreakdown(List<Todo> scoredTodos) {
+    final todosWithSMART = scoredTodos.where((t) => t.smartScores != null).toList();
+    if (todosWithSMART.isEmpty) return const SizedBox.shrink();
+
+    // Calculate average SMART scores
+    final avgSMART = SMARTScores(
+      specificity: todosWithSMART.map((t) => t.smartScores!.specificity).reduce((a, b) => a + b) / todosWithSMART.length,
+      measurability: todosWithSMART.map((t) => t.smartScores!.measurability).reduce((a, b) => a + b) / todosWithSMART.length,
+      achievability: todosWithSMART.map((t) => t.smartScores!.achievability).reduce((a, b) => a + b) / todosWithSMART.length,
+      relevance: todosWithSMART.map((t) => t.smartScores!.relevance).reduce((a, b) => a + b) / todosWithSMART.length,
+      timeBound: todosWithSMART.map((t) => t.smartScores!.timeBound).reduce((a, b) => a + b) / todosWithSMART.length,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('SMART Analysis',
+                style: GoogleFonts.comfortaa(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.chip,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Average',
+                style: GoogleFonts.comfortaa(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.inkLight),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              SMARTRadarChart(
+                scores: avgSMART,
+                size: 140,
+                showLabels: true,
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSMARTBar('Specific', avgSMART.specificity, const Color(0xFF4CAF50)),
+                    const SizedBox(height: 8),
+                    _buildSMARTBar('Measurable', avgSMART.measurability, const Color(0xFF2196F3)),
+                    const SizedBox(height: 8),
+                    _buildSMARTBar('Achievable', avgSMART.achievability, const Color(0xFFFF9800)),
+                    const SizedBox(height: 8),
+                    _buildSMARTBar('Relevant', avgSMART.relevance, const Color(0xFF9C27B0)),
+                    const SizedBox(height: 8),
+                    _buildSMARTBar('Time-Bound', avgSMART.timeBound, const Color(0xFFF44336)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSMARTBar(String label, double score, Color color) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: GoogleFonts.comfortaa(
+              fontSize: 10,
+              color: AppColors.inkLight,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Stack(
+              children: [
+                Container(
+                  height: 8,
+                  color: AppColors.chip,
+                ),
+                FractionallySizedBox(
+                  widthFactor: score / 100,
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '${score.round()}',
+          style: GoogleFonts.comfortaa(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildGoalStatsCard(Goal goal) {
     final goalTodos = widget.todos.where((t) => t.goalId == goal.id).toList();
     final completed = goalTodos.where((t) => t.completed).length;
-    
+
     final scoredTodos = goalTodos.where((t) => t.alignmentScore != null).toList();
     double avgScore = 0;
     if (scoredTodos.isNotEmpty) {
       avgScore = scoredTodos.map((t) => t.alignmentScore!).reduce((a, b) => a + b) / scoredTodos.length;
     }
+
+    // Get velocity prediction
+    final prediction = _velocityService.predictCompletion(goal, goalTodos);
+    final status = _velocityService.getGoalProgressStatus(goal, goalTodos);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -364,11 +740,38 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                   ],
                 ),
               ),
+              if (prediction.hasReliablePrediction) ...[
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('Prediction',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 11, color: AppColors.inkFaint)),
+                    const SizedBox(height: 4),
+                    Text(prediction.summary,
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _getStatusColor(status))),
+                  ],
+                ),
+              ],
             ],
           ),
         ],
       ),
     );
+  }
+
+  Color _getStatusColor(GoalProgressStatus status) {
+    return switch (status) {
+      GoalProgressStatus.onTrack => const Color(0xFF43A047),
+      GoalProgressStatus.atRisk => const Color(0xFFFFA726),
+      GoalProgressStatus.behind => const Color(0xFFE53935),
+      GoalProgressStatus.noDeadline => AppColors.inkFaint,
+      GoalProgressStatus.insufficientData => AppColors.inkFaint,
+    };
   }
 
   Widget _buildAnalyzeButton() {
@@ -428,7 +831,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
             Text('AI Api Settings',
                 style: GoogleFonts.comfortaa(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.ink)),
             const SizedBox(height: 8),
-            Text('Enter your Ai API key to enable AI alignment scoring using Mistral Fast (119B).',
+            Text('Enter your AI API key to enable SMART-based alignment scoring using Mistral (119B).',
                 style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.inkLight, height: 1.4)),
             const SizedBox(height: 20),
             TextField(
