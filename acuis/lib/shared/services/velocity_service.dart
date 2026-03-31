@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/todo.dart';
-import '../models/goal.dart';
-import '../models/velocity_prediction.dart';
-import '../models/smart_scores.dart';
+import '../../models/todo.dart';
+import '../../models/goal.dart';
+import '../../models/velocity_prediction.dart';
+import '../../models/smart_scores.dart';
 
 /// Velocity Tracking Service
 ///
@@ -115,8 +115,8 @@ class VelocityService {
 
     return VelocityPrediction(
       expectedDays: avgDays.round(),
-      bestCase: max(1, (avgDays - stdDev).round()),
-      worstCase: (avgDays + stdDev).round(),
+      bestCaseDays: max(1, (avgDays - stdDev).round()),
+      worstCaseDays: (avgDays + stdDev).round(),
       confidence: confidence,
       velocity: velocity,
       remainingTasks: remainingTasks,

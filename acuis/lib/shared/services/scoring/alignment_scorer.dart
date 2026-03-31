@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
-import '../../models/goal.dart';
-import '../../models/todo.dart';
-import '../../models/smart_scores.dart';
-import '../../models/alignment_result.dart';
-import '../../models/velocity_prediction.dart';
+import '../../../models/goal.dart';
+import '../../../models/todo.dart';
+import '../../../models/smart_scores.dart';
+import '../../../models/alignment_result.dart';
+import '../../../models/velocity_prediction.dart';
 
 /// AI-powered multi-factor alignment scoring with science-backed criteria
 ///

@@ -3,12 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
+import '../../models/velocity_prediction.dart';
 
 class StorageService {
   static const _goalsKey = 'acuis_goals';
   static const _todosKey = 'acuis_todos';
   static const _apiKeyKey = 'acuis_nvidia_api_key';
   static const _userNameKey = 'acuis_user_name';
+  static const _velocitySnapshotsKey = 'acuis_velocity_snapshots';
+  static const _gamificationKey = 'acuis_gamification';
 
   static late final SharedPreferences _prefs;
 
@@ -84,5 +87,52 @@ class StorageService {
 
   String? loadUserNameSync() {
     return _prefs.getString(_userNameKey);
+  }
+
+  // ── Velocity Snapshots ────────────────────────────────────
+  Future<void> saveVelocitySnapshots(List<VelocitySnapshot> snapshots) async {
+    final json = snapshots.map((s) => s.toJson()).toList();
+    await _prefs.setString(_velocitySnapshotsKey, jsonEncode(json));
+  }
+
+  List<VelocitySnapshot> loadVelocitySnapshotsSync() {
+    try {
+      final raw = _prefs.getString(_velocitySnapshotsKey);
+      if (raw == null) return [];
+      final list = jsonDecode(raw) as List;
+      return list.map((j) => VelocitySnapshot.fromJson(j)).toList();
+    } catch (e) {
+      debugPrint('Error loading velocity snapshots: $e');
+      return [];
+    }
+  }
+
+  // ── Generic key-value storage for services ─────────────────
+  Future<void> setString(String key, String value) async {
+    await _prefs.setString(key, value);
+  }
+
+  String? getString(String key) {
+    return _prefs.getString(key);
+  }
+
+  Future<void> setInt(String key, int value) async {
+    await _prefs.setInt(key, value);
+  }
+
+  int? getInt(String key) {
+    return _prefs.getInt(key);
+  }
+
+  Future<void> setStringList(String key, List<String> value) async {
+    await _prefs.setStringList(key, value);
+  }
+
+  List<String>? getStringList(String key) {
+    return _prefs.getStringList(key);
+  }
+
+  Future<void> remove(String key) async {
+    await _prefs.remove(key);
   }
 }
