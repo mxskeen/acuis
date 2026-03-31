@@ -32,9 +32,9 @@ class _GoalListScreenState extends State<GoalListScreen> {
   
   String _getIllustrationForGoals() {
     if (goals.isEmpty) return 'assets/illustrations/girl-with-plant.svg';
-    if (goals.length >= 5) return 'assets/illustrations/ballet-dancer.svg'; // Many goals!
-    if (goals.length >= 3) return 'assets/illustrations/girl-with-plant.svg'; // Growing
-    return 'assets/illustrations/girl-reading-book.svg'; // Starting
+    if (goals.length >= 5) return 'assets/illustrations/tea-lover.svg'; // 5+ goals - Taking time to plan
+    if (goals.length >= 3) return 'assets/illustrations/girl-chilling-and-relaxing-while-using-phone.svg'; // 3-4 goals - Balanced
+    return 'assets/illustrations/girl-with-plant.svg'; // 1-2 goals - Growing
   }
 
   @override

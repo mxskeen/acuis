@@ -69,9 +69,9 @@ class _TodoListScreenState extends State<TodoListScreen> {
   String _getIllustrationForProgress() {
     if (todos.isEmpty) return 'assets/illustrations/girl-reading-book.svg';
     final progress = _done / todos.length;
-    if (progress == 1.0) return 'assets/illustrations/ballet-dancer.svg'; // Celebration!
-    if (progress >= 0.5) return 'assets/illustrations/girl-with-plant.svg'; // Growing
-    return 'assets/illustrations/girl-reading-book.svg'; // Starting
+    if (progress == 1.0) return 'assets/illustrations/ballet-dancer.svg'; // 100% - Celebration!
+    if (progress >= 0.5) return 'assets/illustrations/girl-reading-book.svg'; // 50%+ - Keep reading/working
+    return 'assets/illustrations/girl-reading-book.svg'; // Starting out
   }
 
   @override
