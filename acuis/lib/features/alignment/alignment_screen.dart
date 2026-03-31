@@ -4,6 +4,7 @@ import '../../main.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
 import 'widgets/impact_quadrant.dart';
+import 'widgets/alignment_detail_sheet.dart';
 import '../../shared/services/ai_alignment_service.dart';
 import '../../shared/services/storage_service.dart';
 
@@ -92,7 +93,15 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   children: [
-                    _buildScoreCard(overallScore, scoredTodos.length, linkedTodos.length),
+                    GestureDetector(
+                      onTap: () => showAlignmentDetail(
+                        context,
+                        widget.goals,
+                        widget.todos,
+                        overallScore,
+                      ),
+                      child: _buildScoreCard(overallScore, scoredTodos.length, linkedTodos.length),
+                    ),
                     const SizedBox(height: 36),
                     ImpactQuadrant(todos: widget.todos),
                     const SizedBox(height: 36),
@@ -263,6 +272,18 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Tap for detailed analysis',
+                  style: GoogleFonts.comfortaa(
+                      fontSize: 11, color: AppColors.inkFaint)),
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_forward_ios_rounded,
+                  size: 10, color: AppColors.inkFaint),
+            ],
+          ),
         ],
       ),
     );
