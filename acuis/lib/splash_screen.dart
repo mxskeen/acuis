@@ -180,9 +180,9 @@ class _FloatingIllustrationState extends State<_FloatingIllustration>
       animation: _float,
       builder: (_, __) => Transform.translate(
         offset: Offset(0, _float.value),
-        child: SvgPicture.asset(
-          'assets/illustrations/girl-with-plant.svg',
-          width: 200,
+        child: Image.asset(
+          'assets/splash_screen.png',
+          width: 220,
         ),
       ),
     );

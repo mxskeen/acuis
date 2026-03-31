@@ -182,7 +182,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset('assets/illustrations/girl-with-plant.svg', width: 190),
+            Image.asset('assets/empty_state.png', width: 220),
             const SizedBox(height: 20),
             Text('No goals yet',
                 style: GoogleFonts.comfortaa(

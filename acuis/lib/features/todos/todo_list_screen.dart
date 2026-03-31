@@ -268,7 +268,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset('assets/illustrations/girl-reading-book.svg', width: 190),
+            Image.asset('assets/empty_state.png', width: 220),
             const SizedBox(height: 20),
             Text('Nothing here yet',
                 style: GoogleFonts.comfortaa(
