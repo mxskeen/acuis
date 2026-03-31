@@ -55,69 +55,39 @@ class AlignmentScorer {
   /// Build the AI prompt for alignment analysis
   String _buildAnalysisPrompt(Todo todo, Goal goal, ScoringContext context) {
     return '''
-You are an expert goal achievement coach using science-backed methodologies.
-
-Analyze this task for goal alignment using established behavioral science criteria.
+You are a supportive goal achievement coach. Analyze this task for goal alignment.
 
 GOAL: ${goal.title}
 GOAL DESCRIPTION: ${goal.description}
 GOAL TYPE: ${goal.type.name} (${goal.timeContext})
 TARGET DATE: ${goal.targetDate != null ? '${goal.daysRemaining} days remaining' : 'No specific deadline'}
-GOAL COMMITMENT: ${goal.commitmentLevel ?? 5}/10
 
 TASK: ${todo.title}
 TASK CREATED: ${todo.daysPending} days ago
 USER'S VELOCITY: ${context.velocity.toStringAsFixed(1)} tasks/day
-DAYS UNTIL TARGET: ${context.daysUntilTarget}
-CURRENT STREAK: ${context.currentStreak} days
 
-Score each dimension 0-100:
+Score each SMART dimension 0-100:
 
-1. SPECIFICITY (SMART-S): Is this task action-oriented with clear verbs?
-   - "Write 500 words for chapter 1" = 95
-   - "Write something" = 25
-   - "Exercise for 30 minutes at 7am" = 90
-   - "Get fit" = 10
+1. SPECIFICITY: Is this task action-oriented with clear verbs?
+   - "Write 500 words" = 95, "Write something" = 25
 
-2. MEASURABILITY (SMART-M): Can completion be objectively verified?
-   - "Run 5km" = 95
-   - "Complete 3 pomodoro sessions" = 90
-   - "Exercise" = 20
-   - "Think about project" = 5
+2. MEASURABILITY: Can completion be objectively verified?
+   - "Run 5km" = 95, "Exercise" = 20
 
-3. ACHIEVABILITY (SMART-A): Is this realistic given velocity and timeframe?
+3. ACHIEVABILITY: Is this realistic given user's pace?
    - User completes ${context.velocity.toStringAsFixed(1)} tasks/day
-   - Task requires ~${todo.effortLevel.estimatedMinutes} minutes
-   - ${context.daysUntilTarget} days until target
-   - Consider: can this realistically be done?
 
-4. RELEVANCE (SMART-R): How directly does this task contribute to the goal?
-   - Direct action toward goal = 90+
-   - Supporting/enabling action = 70-85
-   - Tangentially related = 40-60
-   - Unrelated or questionable = 0-30
+4. RELEVANCE: How directly does this task contribute to the goal?
+   - Direct action = 90+, Supporting = 70-85, Tangential = 40-60, Unrelated = 0-30
 
-5. TIME-BOUND (SMART-T): Does it have implicit/explicit deadline?
-   - Has specific deadline today/tomorrow = 95
-   - Deadline within a week = 80
-   - Linked to goal target date = 70
-   - No time frame but could have one = 40
-   - No time frame possible = 20
+5. TIME-BOUND: Does it have a deadline or timeframe?
+   - Specific deadline = 95, Linked to goal = 70, No timeframe = 20
 
-6. EISENHOWER CLASSIFICATION:
-   - "doNow": Urgent + Important (deadline imminent + high relevance)
-   - "schedule": Not Urgent + Important (high relevance, plan ahead)
-   - "delegate": Urgent + Not Important (deadline but lower relevance)
-   - "eliminate": Not Urgent + Not Important (consider dropping)
+6. EISENHOWER CLASS: "doNow" | "schedule" | "delegate" | "eliminate"
 
-7. ESTIMATED EFFORT:
-   - "tiny": < 15 minutes (quick win)
-   - "small": 15-30 minutes
-   - "medium": 30 min - 1 hour
-   - "large": 1-2 hours
-   - "huge": > 2 hours (consider breaking down)
+7. EFFORT: "tiny" | "small" | "medium" | "large" | "huge"
 
-Return ONLY valid JSON (no markdown, no explanation outside JSON):
+Return ONLY valid JSON:
 {
   "smartScores": {
     "specificity": <0-100>,
@@ -129,9 +99,9 @@ Return ONLY valid JSON (no markdown, no explanation outside JSON):
   "eisenhowerClass": "<doNow|schedule|delegate|eliminate>",
   "estimatedEffort": "<tiny|small|medium|large|huge>",
   "estimatedMinutes": <number>,
-  "overallScore": <0-100 weighted average>,
-  "explanation": "<personalized 1-2 sentence explanation of alignment>",
-  "suggestion": "<optional: one specific tip to improve this task's effectiveness>"
+  "overallScore": <0-100>,
+  "explanation": "<1-2 friendly sentences explaining how this task connects to the goal. Be encouraging and specific. Example: 'This task directly moves you closer to your goal of learning Spanish by building vocabulary daily.'>",
+  "suggestion": "<optional: one practical tip to make this task more effective>"
 }
 ''';
   }
@@ -248,7 +218,7 @@ Return ONLY valid JSON (no markdown, no explanation outside JSON):
 
     return AlignmentResult(
       score: components.weightedOverall,
-      explanation: _generateFallbackExplanation(smartScores, eisenhowerClass),
+      explanation: _generateFallbackExplanation(smartScores, eisenhowerClass, todo, goal),
       smartScores: smartScores,
       eisenhowerClass: eisenhowerClass,
       estimatedEffort: todo.effortLevel,
@@ -418,13 +388,22 @@ Return ONLY valid JSON (no markdown, no explanation outside JSON):
   String _generateFallbackExplanation(
     SMARTScores scores,
     EisenhowerClass eisenhower,
+    Todo todo,
+    Goal goal,
   ) {
-    final weakArea = scores.weakestDimension;
-    final strongArea = scores.strongestDimension;
+    final relevance = scores.relevance;
 
-    return 'Task scores high on $strongArea. '
-        'Consider improving $weakArea for better alignment. '
-        'Eisenhower: ${eisenhower.displayName}.';
+    // Generate a friendly, encouraging explanation
+    if (relevance >= 70) {
+      return 'This task is well-aligned with your goal "${goal.title}". '
+          'It directly contributes to your progress.';
+    } else if (relevance >= 50) {
+      return 'This task supports your goal "${goal.title}". '
+          'Consider making it more specific to boost its impact.';
+    } else {
+      return 'This task has some connection to "${goal.title}". '
+          'Try adding specific actions that directly move you toward the goal.';
+    }
   }
 
   // ── Parsing helpers ─────────────────────────────────────────────
