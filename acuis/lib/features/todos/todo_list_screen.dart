@@ -645,15 +645,10 @@ class _ReasonSheetState extends State<_ReasonSheet> {
   }
 
   Future<void> _fetchReason() async {
-    // Priority: alignmentExplanation > aiReason > fetch from API
-    if (widget.todo.alignmentExplanation != null &&
-        widget.todo.alignmentExplanation!.isNotEmpty) {
-      setState(() {
-        _reason = widget.todo.alignmentExplanation;
-        _loading = false;
-      });
-      return;
-    }
+    // Task Reason = why this task matters for your goal (aiReason)
+    // This is different from alignment explanation which is about goal alignment
+
+    // First check if we have a task reason cached
     if (widget.todo.aiReason != null && widget.todo.aiReason!.isNotEmpty) {
       setState(() {
         _reason = widget.todo.aiReason;
@@ -661,6 +656,7 @@ class _ReasonSheetState extends State<_ReasonSheet> {
       });
       return;
     }
+
     // No cached reason — fetch from API
     if (widget.apiKey.isEmpty) {
       setState(() {
