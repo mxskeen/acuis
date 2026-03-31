@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
@@ -16,11 +17,24 @@ class StorageService {
   }
 
   Future<List<Goal>> loadGoals() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_goalsKey);
-    if (raw == null) return [];
-    final list = jsonDecode(raw) as List;
-    return list.map((j) => Goal.fromJson(j)).toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_goalsKey);
+      if (raw == null) return [];
+      final list = jsonDecode(raw) as List;
+      final List<Goal> validGoals = [];
+      for (var j in list) {
+        try {
+          validGoals.add(Goal.fromJson(j));
+        } catch (e) {
+          debugPrint('Error parsing goal: $e');
+        }
+      }
+      return validGoals;
+    } catch (e) {
+      debugPrint('Error loading goals: $e');
+      return [];
+    }
   }
 
   // ── Todos ────────────────────────────────────────────────
@@ -31,11 +45,24 @@ class StorageService {
   }
 
   Future<List<Todo>> loadTodos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_todosKey);
-    if (raw == null) return [];
-    final list = jsonDecode(raw) as List;
-    return list.map((j) => Todo.fromJson(j)).toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_todosKey);
+      if (raw == null) return [];
+      final list = jsonDecode(raw) as List;
+      final List<Todo> validTodos = [];
+      for (var j in list) {
+        try {
+          validTodos.add(Todo.fromJson(j));
+        } catch (e) {
+          debugPrint('Error parsing todo: $e');
+        }
+      }
+      return validTodos;
+    } catch (e) {
+      debugPrint('Error loading todos: $e');
+      return [];
+    }
   }
 
   // ── API Key ──────────────────────────────────────────────
