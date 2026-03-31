@@ -1,75 +1,122 @@
-# Acuis
+# acuis
 
-A cross-platform goal tracking app with visual progress feedback through wallpaper clarity.
+acuis is a cross-platform goal tracking app built with Flutter. You set goals, break them down into todos, and track how well your daily work actually connects to what you are trying to achieve.
 
-## Concept
+Core features:
 
-Acuis helps you track your goals and daily todos with a unique visual feedback system. As you complete tasks aligned with your goals, your wallpaper becomes progressively clearer - transforming from blurred to crystal clear as you make progress.
+- Create short-term and long-term goals
+- Manage todos and link them to specific goals
+- AI-generated task suggestions based on your goals (powered by NVIDIA NIM / Mistral)
+- Alignment scoring that shows how well your todos map to your goals
+- Streak tracking to keep momentum
+- Persistent local storage, no account required
 
-## Features
+## Requirements
 
-- **Goal Management**: Create short-term and long-term goals
-- **Todo Tracking**: Daily task management linked to your goals
-- **AI Alignment Analysis**: Automatically analyzes how well your todos align with your goals
-- **Visual Progress**: Wallpaper blur decreases as you complete aligned tasks
-- **Glassmorphism UI**: Beautiful, modern interface with blur effects
-- **Cross-Platform**: Works on Android, Linux, and Windows
-
-## Tech Stack
-
-- **Framework**: Flutter 3.41.5
-- **Language**: Dart 3.11.3
-- **AI Integration**: OpenAI API for alignment analysis
-- **Platforms**: Android, Linux, Windows
-
-## Project Structure
-
-```
-lib/
-├── core/                    # Core utilities
-├── features/
-│   ├── goals/              # Goal management screens
-│   ├── todos/              # Todo management screens
-│   └── wallpaper/          # Wallpaper feature
-├── models/                 # Data models (Goal, Todo, UserSettings)
-├── shared/
-│   ├── services/           # AI alignment, wallpaper services
-│   └── widgets/            # Reusable widgets
-└── main.dart               # App entry point
-```
+- Flutter SDK (Dart ^3.11.3)
+- For Android: Android SDK, min SDK 21
+- For Windows: Visual Studio with the "Desktop development with C++" workload
+- For Linux: standard build tools (clang, cmake, ninja, libgtk-3-dev)
+- An NVIDIA NIM API key if you want AI alignment scoring and task generation
 
 ## Setup
 
-1. Get dependencies:
-   ```bash
-   flutter pub get
-   ```
+Clone the repo and install dependencies:
 
-2. Run on your platform:
-   ```bash
-   # Android
-   flutter run -d android
+```
+cd acuis
+flutter pub get
+```
 
-   # Linux
-   flutter run -d linux
+## Running on each platform
 
-   # Windows
-   flutter run -d windows
-   ```
+### Android
 
-## How It Works
+Connect a device or start an emulator, then:
 
-1. **Set Goals**: Define your short-term and long-term objectives
-2. **Add Todos**: Create daily tasks and link them to goals
-3. **AI Analysis**: The app analyzes alignment between todos and goals
-4. **Visual Feedback**: Complete tasks to make your wallpaper clearer
-5. **Track Progress**: See your overall alignment score
+```
+flutter run -d android
+```
 
-## Next Steps
+Build a release APK:
 
-- Add persistent storage (SQLite/Hive)
-- Implement settings screen for API key configuration
-- Add wallpaper selection feature
-- Implement real-time progress tracking
-- Add notifications and reminders
-- Create onboarding flow
+```
+flutter build apk
+```
+
+### Windows
+
+```
+flutter run -d windows
+```
+
+Build a release executable:
+
+```
+flutter build windows
+```
+
+### Linux
+
+```
+flutter run -d linux
+```
+
+Build a release binary:
+
+```
+flutter build linux
+```
+
+### Other platforms
+
+iOS and macOS are not currently configured in this project.
+
+## AI features setup
+
+The alignment scoring and task generation use the NVIDIA NIM API with Mistral Small (119B). To enable them:
+
+1. Get an API key from [https://build.nvidia.com](https://build.nvidia.com)
+2. Open the app, go to the Alignment tab, tap the settings icon, and paste your key
+
+The key is stored locally on device only.
+
+## Project structure
+
+```
+lib/
+  features/
+    goals/        goal list and detail screens
+    todos/        todo list screen
+    alignment/    alignment screen and impact quadrant
+  models/         data models (Goal, Todo)
+  shared/
+    services/     storage, streak, AI task generation, AI alignment
+  main.dart       app entry, theme, navigation
+  splash_screen.dart
+assets/
+  illustrations/  SVG assets
+  icon.png
+  splash_screen.png
+  empty_state.png
+```
+
+## Contributing
+
+1. Fork the repository and create a branch from `main`:
+
+```
+git checkout -b your-feature-name
+```
+
+2. Make your changes. Keep commits focused and descriptive.
+
+3. Run the linter before opening a PR:
+
+```
+flutter analyze
+```
+
+4. Open a pull request against `main` with a clear description of what changed and why.
+
+Keep PRs small and scoped to a single concern. If you are adding a new feature, discuss it in an issue first.
