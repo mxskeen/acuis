@@ -645,7 +645,7 @@ class _ReasonSheetState extends State<_ReasonSheet> {
   }
 
   Future<void> _fetchReason() async {
-    // Use cached explanation if available — no API call needed
+    // Priority: alignmentExplanation > aiReason > fetch from API
     if (widget.todo.alignmentExplanation != null &&
         widget.todo.alignmentExplanation!.isNotEmpty) {
       setState(() {
@@ -654,9 +654,17 @@ class _ReasonSheetState extends State<_ReasonSheet> {
       });
       return;
     }
+    if (widget.todo.aiReason != null && widget.todo.aiReason!.isNotEmpty) {
+      setState(() {
+        _reason = widget.todo.aiReason;
+        _loading = false;
+      });
+      return;
+    }
+    // No cached reason — fetch from API
     if (widget.apiKey.isEmpty) {
       setState(() {
-        _error = 'No API key set. Add it in the Alignment tab.';
+        _error = 'Set your API key in the Alignment tab to see AI reasoning.';
         _loading = false;
       });
       return;
@@ -664,13 +672,20 @@ class _ReasonSheetState extends State<_ReasonSheet> {
     try {
       final service = AITaskGeneratorService(apiKey: widget.apiKey);
       final reason = await service.fetchTaskReason(widget.todo.title, widget.goal);
+      if (reason.isEmpty) {
+        setState(() {
+          _error = 'AI returned an empty response. Try again.';
+          _loading = false;
+        });
+        return;
+      }
       setState(() {
         _reason = reason;
         _loading = false;
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = 'Failed to fetch reasoning: ${e.toString()}';
         _loading = false;
       });
     }
