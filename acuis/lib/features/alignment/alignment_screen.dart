@@ -10,6 +10,7 @@ import '../../shared/services/storage_service.dart';
 import '../../shared/services/velocity_service.dart';
 import '../../shared/services/gamification_service.dart';
 import '../../shared/services/streak_service.dart';
+import '../../shared/services/alignment_refresh_service.dart';
 import '../../shared/widgets/celebration_overlay.dart';
 import 'widgets/eisenhower_quadrant.dart';
 import 'widgets/science_backed_growth_chart.dart';
@@ -19,12 +20,14 @@ import 'widgets/alignment_detail_sheet.dart';
 class AlignmentScreen extends StatefulWidget {
   final List<Goal> goals;
   final List<Todo> todos;
+  final AlignmentRefreshService refreshService;
   final void Function(List<Todo> updatedTodos) onDataChanged;
 
   const AlignmentScreen({
     super.key,
     required this.goals,
     required this.todos,
+    required this.refreshService,
     required this.onDataChanged,
   });
 
@@ -39,12 +42,37 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   late VelocityService _velocityService;
   late GamificationService _gamificationService;
   late StreakService _streakService;
+  int _lastRefreshVersion = 0;
 
   @override
   void initState() {
     super.initState();
     _apiKey = _storage.loadApiKeySync() ?? '';
     _initServices();
+    widget.refreshService.addListener(_onRefreshTriggered);
+  }
+
+  @override
+  void dispose() {
+    widget.refreshService.removeListener(_onRefreshTriggered);
+    super.dispose();
+  }
+
+  void _onRefreshTriggered() {
+    // Only refresh if version changed and we have API key
+    if (widget.refreshService.refreshVersion != _lastRefreshVersion &&
+        _apiKey.isNotEmpty &&
+        !_isAnalyzing) {
+      _lastRefreshVersion = widget.refreshService.refreshVersion;
+
+      // Check if there are unanalyzed linked todos
+      final linkedTodos = widget.todos.where((t) => t.goalId != null).toList();
+      final unanalyzedTodos = linkedTodos.where((t) => t.alignmentScore == null).toList();
+
+      if (unanalyzedTodos.isNotEmpty) {
+        _analyze(autoRefresh: true);
+      }
+    }
   }
 
   Future<void> _initServices() async {
@@ -54,9 +82,11 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _analyze() async {
+  Future<void> _analyze({bool autoRefresh = false}) async {
     if (_apiKey.isEmpty) {
-      _showSettingsSheet(context);
+      if (!autoRefresh) {
+        _showSettingsSheet(context);
+      }
       return;
     }
 
@@ -97,13 +127,16 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
       widget.onDataChanged(updatedTodos);
 
-      // Check for celebrations
-      _checkCelebrations(updatedTodos);
+      // Only check for celebrations on manual refresh
+      if (!autoRefresh) {
+        _checkCelebrations(updatedTodos);
+      }
 
       // Record velocity snapshot
       await _velocityService.recordDaySnapshot(updatedTodos);
     } catch (e) {
-      if (mounted) {
+      // Only show error on manual refresh
+      if (mounted && !autoRefresh) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error analyzing: $e'), backgroundColor: Colors.red),
         );
