@@ -10,11 +10,10 @@ import 'velocity_service.dart';
 
 /// Gamification Service
 ///
-/// Science-backed addictive elements based on behavioral psychology:
-/// - Variable Rewards (dopamine hits)
+/// Motivation and engagement features based on behavioral science:
+/// - Variable Rewards (celebrations for achievements)
 /// - Loss Aversion (streak protection)
-/// - Social Proof (when available)
-/// - Progress Gradient Effect (near-completion motivation)
+/// - Progress Visualization (near-completion motivation)
 /// - BJ Fogg's Tiny Habits (celebration triggers)
 class GamificationService {
   static const _celebrationsKey = 'gamification_celebrations';

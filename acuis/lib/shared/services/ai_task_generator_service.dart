@@ -56,7 +56,7 @@ Generate $maxTasks tasks that follow these science-backed principles:
    - Build momentum with small wins first
 
 3. PROGRESSIVE DIFFICULTY: Order tasks from easiest to hardest
-   - Tasks 1-2: Tiny/easy (builds momentum, dopamine hit from quick wins)
+   - Tasks 1-2: Tiny/easy (builds momentum, sense of accomplishment from quick wins)
    - Tasks 3-4: Medium effort (real progress toward the goal)
    - Task 5: Stretch goal (ambitious but achievable)
 
