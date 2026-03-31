@@ -11,17 +11,25 @@ class AlignmentResult {
 }
 
 class AIAlignmentService {
+  static const _defaultUrl =
+      'https://integrate.api.nvidia.com/v1/chat/completions';
+  static const _defaultModel = 'mistralai/mistral-small-4-119b-2603';
+
   final String apiKey;
   final String apiUrl;
+  final String model;
 
   AIAlignmentService({
     required this.apiKey,
-    this.apiUrl = 'https://api.openai.com/v1/chat/completions',
+    this.apiUrl = _defaultUrl,
+    this.model = _defaultModel,
   });
 
+  /// Score how well a single todo aligns with its linked goal (0-100).
   Future<AlignmentResult> analyzeAlignment(Todo todo, Goal goal) async {
     final prompt = '''
-Analyze how well this todo aligns with the given goal. Return a score from 0-100 and a brief explanation.
+Analyze how well this todo task aligns with the given goal.
+Return ONLY valid JSON, no markdown, no explanation outside the JSON.
 
 Goal: ${goal.title}
 Goal Description: ${goal.description}
@@ -29,11 +37,8 @@ Goal Type: ${goal.type.name}
 
 Todo: ${todo.title}
 
-Respond in JSON format:
-{
-  "score": <number 0-100>,
-  "explanation": "<brief explanation>"
-}
+Respond in this exact JSON format:
+{"score": <number 0-100>, "explanation": "<one sentence>"}
 ''';
 
     try {
@@ -42,50 +47,82 @@ Respond in JSON format:
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
+          'Accept': 'application/json',
         },
         body: jsonEncode({
-          'model': 'gpt-3.5-turbo',
+          'model': model,
           'messages': [
             {'role': 'user', 'content': prompt}
           ],
-          'temperature': 0.3,
+          'max_tokens': 256,
+          'temperature': 0.1,
+          'top_p': 1.0,
+          'stream': false,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final content = data['choices'][0]['message']['content'];
-        final result = jsonDecode(content);
+        final content = data['choices'][0]['message']['content'] as String;
+
+        // Extract JSON from response (handle potential markdown wrapping)
+        final jsonStr = _extractJson(content);
+        final result = jsonDecode(jsonStr);
 
         return AlignmentResult(
-          score: result['score'].toDouble(),
-          explanation: result['explanation'],
+          score: (result['score'] as num).toDouble(),
+          explanation: result['explanation'] ?? '',
         );
       } else {
-        throw Exception('API request failed: ${response.statusCode}');
+        throw Exception('API error ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       return AlignmentResult(
-        score: 50.0,
-        explanation: 'Unable to analyze alignment: $e',
+        score: -1,
+        explanation: 'Unable to analyze: $e',
       );
     }
   }
 
-  Future<double> calculateOverallProgress(List<Todo> todos, List<Goal> goals) async {
-    if (todos.isEmpty || goals.isEmpty) return 0.0;
+  /// Batch-analyze all linked todo-goal pairs.
+  Future<Map<String, AlignmentResult>> analyzeAll(
+    List<Todo> todos,
+    List<Goal> goals,
+  ) async {
+    final goalMap = {for (var g in goals) g.id: g};
+    final results = <String, AlignmentResult>{};
 
-    double totalAlignment = 0.0;
-    int completedTodos = 0;
-
-    for (var todo in todos) {
-      if (todo.completed && todo.alignmentScore != null) {
-        totalAlignment += todo.alignmentScore!;
-        completedTodos++;
+    for (final todo in todos) {
+      if (todo.goalId != null && goalMap.containsKey(todo.goalId)) {
+        results[todo.id] =
+            await analyzeAlignment(todo, goalMap[todo.goalId]!);
+        // Small delay to avoid rate limiting
+        await Future.delayed(const Duration(milliseconds: 200));
       }
     }
 
-    if (completedTodos == 0) return 0.0;
-    return totalAlignment / completedTodos;
+    return results;
+  }
+
+  /// Calculate overall alignment as average score of analyzed todos.
+  double calculateOverallScore(Map<String, AlignmentResult> results) {
+    if (results.isEmpty) return 0;
+    final valid = results.values.where((r) => r.score >= 0);
+    if (valid.isEmpty) return 0;
+    return valid.map((r) => r.score).reduce((a, b) => a + b) / valid.length;
+  }
+
+  /// Extract JSON string from potentially markdown-wrapped response.
+  String _extractJson(String content) {
+    // Try to find JSON in code blocks first
+    final codeBlock = RegExp(r'```(?:json)?\s*([\s\S]*?)```');
+    final match = codeBlock.firstMatch(content);
+    if (match != null) return match.group(1)!.trim();
+
+    // Try to find raw JSON object
+    final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(content);
+    if (jsonMatch != null) return jsonMatch.group(0)!;
+
+    return content.trim();
   }
 }

@@ -5,6 +5,8 @@ import 'features/goals/goal_list_screen.dart';
 import 'features/todos/todo_list_screen.dart';
 import 'features/alignment/alignment_screen.dart';
 import 'models/goal.dart';
+import 'models/todo.dart';
+import 'shared/services/storage_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,13 +68,30 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _idx = 0;
-  final List<Goal> goals = [];
+  List<Goal> goals = [];
+  List<Todo> todos = [];
   late final PageController _pageCtrl;
+  final _storage = StorageService();
 
   @override
   void initState() {
     super.initState();
     _pageCtrl = PageController();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final loadedGoals = await _storage.loadGoals();
+    final loadedTodos = await _storage.loadTodos();
+    setState(() {
+      goals = loadedGoals;
+      todos = loadedTodos;
+    });
+  }
+
+  void _saveData() {
+    _storage.saveGoals(goals);
+    _storage.saveTodos(todos);
   }
 
   @override
@@ -98,9 +117,35 @@ class _HomeScreenState extends State<HomeScreen> {
         onPageChanged: (i) => setState(() => _idx = i),
         physics: const BouncingScrollPhysics(),
         children: [
-          TodoListScreen(goals: goals),
-          GoalListScreen(),
-          const AlignmentScreen(),
+          GoalListScreen(
+            goals: goals,
+            onAdd: (g) {
+              setState(() => goals.add(g));
+              _saveData();
+            },
+          ),
+          TodoListScreen(
+            goals: goals,
+            todos: todos,
+            onAdd: (t) {
+              setState(() => todos.add(t));
+              _saveData();
+            },
+            onToggle: (i) {
+              setState(() {
+                todos[i] = todos[i].copyWith(completed: !todos[i].completed);
+              });
+              _saveData();
+            },
+          ),
+          AlignmentScreen(
+            goals: goals,
+            todos: todos,
+            onDataChanged: () {
+              setState(() {});
+              _saveData();
+            },
+          ),
         ],
       ),
       bottomNavigationBar: _NavBar(
@@ -110,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
 
 // ── Dynamic Island pill nav ────────────────────────────────
 class _NavBar extends StatefulWidget {
@@ -127,8 +173,8 @@ class _NavBarState extends State<_NavBar> with SingleTickerProviderStateMixin {
   late final Animation<double> _curve;
 
   static const _tabs = [
-    _Tab(Icons.check_box_outline_blank_rounded, 'Todos'),
     _Tab(Icons.outlined_flag_rounded, 'Goals'),
+    _Tab(Icons.check_box_outline_blank_rounded, 'Todos'),
     _Tab(Icons.bar_chart_rounded, 'Align'),
   ];
 

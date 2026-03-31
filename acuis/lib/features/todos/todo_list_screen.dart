@@ -7,14 +7,22 @@ import '../../models/goal.dart';
 
 class TodoListScreen extends StatefulWidget {
   final List<Goal> goals;
-  const TodoListScreen({super.key, required this.goals});
+  final List<Todo> todos;
+  final void Function(Todo) onAdd;
+  final void Function(int) onToggle;
+  const TodoListScreen({
+    super.key,
+    required this.goals,
+    required this.todos,
+    required this.onAdd,
+    required this.onToggle,
+  });
   @override
   State<TodoListScreen> createState() => _TodoListScreenState();
 }
 
 class _TodoListScreenState extends State<TodoListScreen> {
-  List<Todo> todos = [];
-
+  List<Todo> get todos => widget.todos;
   int get _done => todos.where((t) => t.completed).length;
 
   @override
@@ -125,9 +133,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
         itemBuilder: (_, i) => _TodoCard(
           todo: todos[i],
           goals: widget.goals,
-          onToggle: () => setState(() {
-            todos[i] = todos[i].copyWith(completed: !todos[i].completed);
-          }),
+          onToggle: () => widget.onToggle(i),
         ),
       );
 
@@ -197,14 +203,12 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 label: 'Add todo',
                 onTap: () {
                   if (titleCtrl.text.trim().isNotEmpty) {
-                    setState(() {
-                      todos.add(Todo(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        title: titleCtrl.text.trim(),
-                        goalId: goalId,
-                        createdAt: DateTime.now(),
-                      ));
-                    });
+                    widget.onAdd(Todo(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      title: titleCtrl.text.trim(),
+                      goalId: goalId,
+                      createdAt: DateTime.now(),
+                    ));
                     Navigator.pop(ctx);
                   }
                 },

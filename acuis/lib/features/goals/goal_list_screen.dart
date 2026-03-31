@@ -5,13 +5,15 @@ import '../../main.dart';
 import '../../models/goal.dart';
 
 class GoalListScreen extends StatefulWidget {
-  const GoalListScreen({super.key});
+  final List<Goal> goals;
+  final void Function(Goal) onAdd;
+  const GoalListScreen({super.key, required this.goals, required this.onAdd});
   @override
   State<GoalListScreen> createState() => _GoalListScreenState();
 }
 
 class _GoalListScreenState extends State<GoalListScreen> {
-  List<Goal> goals = [];
+  List<Goal> get goals => widget.goals;
 
   @override
   Widget build(BuildContext context) {
@@ -170,15 +172,13 @@ class _GoalListScreenState extends State<GoalListScreen> {
                 label: 'Add goal',
                 onTap: () {
                   if (titleCtrl.text.trim().isNotEmpty) {
-                    setState(() {
-                      goals.add(Goal(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        title: titleCtrl.text.trim(),
-                        description: descCtrl.text.trim(),
-                        type: type,
-                        createdAt: DateTime.now(),
-                      ));
-                    });
+                    widget.onAdd(Goal(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      title: titleCtrl.text.trim(),
+                      description: descCtrl.text.trim(),
+                      type: type,
+                      createdAt: DateTime.now(),
+                    ));
                     Navigator.pop(ctx);
                   }
                 },

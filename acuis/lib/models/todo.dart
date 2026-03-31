@@ -5,6 +5,7 @@ class Todo {
   final String? goalId;
   final DateTime createdAt;
   final double? alignmentScore;
+  final String? alignmentExplanation;
 
   Todo({
     required this.id,
@@ -13,6 +14,7 @@ class Todo {
     this.goalId,
     required this.createdAt,
     this.alignmentScore,
+    this.alignmentExplanation,
   });
 
   Map<String, dynamic> toJson() => {
@@ -22,6 +24,7 @@ class Todo {
         'goalId': goalId,
         'createdAt': createdAt.toIso8601String(),
         'alignmentScore': alignmentScore,
+        'alignmentExplanation': alignmentExplanation,
       };
 
   factory Todo.fromJson(Map<String, dynamic> json) => Todo(
@@ -31,6 +34,7 @@ class Todo {
         goalId: json['goalId'],
         createdAt: DateTime.parse(json['createdAt']),
         alignmentScore: json['alignmentScore']?.toDouble(),
+        alignmentExplanation: json['alignmentExplanation'],
       );
 
   Todo copyWith({
@@ -40,6 +44,7 @@ class Todo {
     String? goalId,
     DateTime? createdAt,
     double? alignmentScore,
+    String? alignmentExplanation,
   }) =>
       Todo(
         id: id ?? this.id,
@@ -48,5 +53,6 @@ class Todo {
         goalId: goalId ?? this.goalId,
         createdAt: createdAt ?? this.createdAt,
         alignmentScore: alignmentScore ?? this.alignmentScore,
+        alignmentExplanation: alignmentExplanation ?? this.alignmentExplanation,
       );
 }
