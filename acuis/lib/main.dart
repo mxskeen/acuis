@@ -8,10 +8,10 @@ import 'features/alignment/alignment_screen.dart';
 import 'models/goal.dart';
 import 'models/todo.dart';
 import 'shared/services/storage_service.dart';
+import 'splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await StorageService.init();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
@@ -57,7 +57,35 @@ class AcuisApp extends StatelessWidget {
         highlightColor: Colors.transparent,
         dividerColor: AppColors.border,
       ),
-      home: const HomeScreen(),
+      home: const _AppEntry(),
+    );
+  }
+}
+
+// ── App Entry (Splash → Home) ──────────────────────────────
+class _AppEntry extends StatefulWidget {
+  const _AppEntry();
+  @override
+  State<_AppEntry> createState() => _AppEntryState();
+}
+
+class _AppEntryState extends State<_AppEntry> {
+  bool _ready = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return SplashScreen(
+        onInit: () async {
+          await StorageService.init();
+        },
+        onDone: () => setState(() => _ready = true),
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      child: const HomeScreen(),
     );
   }
 }
