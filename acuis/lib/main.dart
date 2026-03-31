@@ -8,6 +8,7 @@ import 'features/alignment/alignment_screen.dart';
 import 'models/goal.dart';
 import 'models/todo.dart';
 import 'shared/services/storage_service.dart';
+import 'shared/services/alignment_refresh_service.dart';
 import 'splash_screen.dart';
 
 void main() async {
@@ -102,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Todo> todos = [];
   late final PageController _pageCtrl;
   final _storage = StorageService();
+  final _refreshService = AlignmentRefreshService();
   String? _userName;
 
   @override
@@ -113,6 +115,19 @@ class _HomeScreenState extends State<HomeScreen> {
     _userName = _storage.loadUserNameSync();
     if (_userName == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showNameDialog());
+    }
+  }
+
+  void _onPageChanged(int i) {
+    setState(() => _idx = i);
+
+    // Notify refresh service about screen visibility
+    if (i == 2) {
+      // Alignment screen is visible
+      _refreshService.onScreenVisible();
+    } else if (_idx == 2) {
+      // Was on alignment screen, now leaving
+      _refreshService.onScreenHidden();
     }
   }
 
@@ -137,6 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _pageCtrl.dispose();
+    _refreshService.dispose();
     super.dispose();
   }
 
@@ -154,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.bg,
       body: PageView(
         controller: _pageCtrl,
-        onPageChanged: (i) => setState(() => _idx = i),
+        onPageChanged: _onPageChanged,
         physics: const BouncingScrollPhysics(),
         children: [
           GoalListScreen(
@@ -163,18 +179,22 @@ class _HomeScreenState extends State<HomeScreen> {
             onAdd: (g) {
               setState(() => goals = [...goals, g]);
               _saveData();
+              _refreshService.onGoalsChanged();
             },
             onEdit: (index, g) {
               setState(() => goals = [...goals]..[index] = g);
               _saveData();
+              _refreshService.onGoalsChanged();
             },
             onDelete: (index) {
               setState(() => goals = [...goals]..removeAt(index));
               _saveData();
+              _refreshService.onGoalsChanged();
             },
             onAddTodos: (newTodos) {
               setState(() => todos = [...todos, ...newTodos]);
               _saveData();
+              _refreshService.onTodosChanged();
             },
           ),
           TodoListScreen(
@@ -184,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onAdd: (t) {
               setState(() => todos = [...todos, t]);
               _saveData();
+              _refreshService.onTodosChanged();
             },
             onToggle: (i) {
               setState(() {
@@ -192,19 +213,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 todos = updated;
               });
               _saveData();
+              _refreshService.onTodosChanged();
             },
             onEdit: (index, t) {
               setState(() => todos = [...todos]..[index] = t);
               _saveData();
+              _refreshService.onTodosChanged();
             },
             onDelete: (index) {
               setState(() => todos = [...todos]..removeAt(index));
               _saveData();
+              _refreshService.onTodosChanged();
             },
           ),
           AlignmentScreen(
             goals: goals,
             todos: todos,
+            refreshService: _refreshService,
             onDataChanged: (updatedTodos) {
               setState(() => todos = updatedTodos);
               _saveData();
