@@ -201,12 +201,6 @@ class _TodoListScreenState extends State<TodoListScreen> {
                     ),
                   ],
                 ),
-                if (todos.isNotEmpty)
-                  Text(_getTimeBasedGreeting(),
-                      style: GoogleFonts.comfortaa(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.inkLight)),
                 GestureDetector(
                   onTap: () {
                     if (_streakService != null) {
@@ -226,7 +220,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                         const Text('🔥', style: TextStyle(fontSize: 14)),
                         const SizedBox(width: 5),
                         Text(
-                          _currentStreak > 0 ? '$_currentStreak day streak' : 'Start streak',
+                          _currentStreak > 0 ? '$_currentStreak' : '0',
                           style: GoogleFonts.comfortaa(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,

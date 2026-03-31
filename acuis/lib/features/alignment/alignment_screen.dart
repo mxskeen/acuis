@@ -425,10 +425,10 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
               ),
             ),
             const SizedBox(height: 22),
-            Text('NVIDIA NIM Settings',
+            Text('AI Api Settings',
                 style: GoogleFonts.comfortaa(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.ink)),
             const SizedBox(height: 8),
-            Text('Enter your NVIDIA API key to enable AI alignment scoring using Mistral Fast (119B).',
+            Text('Enter your Ai API key to enable AI alignment scoring using Mistral Fast (119B).',
                 style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.inkLight, height: 1.4)),
             const SizedBox(height: 20),
             TextField(
@@ -436,7 +436,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
               obscureText: true,
               style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
               decoration: InputDecoration(
-                hintText: 'NVIDIA API Key (nvapi-...)',
+                hintText: 'Enter API Key (sk-...)',
                 hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
                 filled: true,
                 fillColor: AppColors.bg,
