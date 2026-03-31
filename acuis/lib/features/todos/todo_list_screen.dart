@@ -207,6 +207,35 @@ class _TodoListScreenState extends State<TodoListScreen> {
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: AppColors.inkLight)),
+                GestureDetector(
+                  onTap: () {
+                    if (_streakService != null) {
+                      showStreakSheet(context, _streakService!);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🔥', style: TextStyle(fontSize: 14)),
+                        const SizedBox(width: 5),
+                        Text(
+                          _currentStreak > 0 ? '$_currentStreak day streak' : 'Start streak',
+                          style: GoogleFonts.comfortaa(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -215,60 +244,14 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   Widget _buildProgress() => Padding(
         padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
-        child: Column(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(
-                value: _done / todos.length,
-                minHeight: 3,
-                backgroundColor: AppColors.border,
-                valueColor: const AlwaysStoppedAnimation(AppColors.ink),
-              ),
-            ),
-            if (_currentStreak > 0) ...[
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      if (_streakService != null) {
-                        showStreakSheet(context, _streakService!);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('🔥', style: TextStyle(fontSize: 16)),
-                          const SizedBox(width: 6),
-                          Text('$_currentStreak day streak',
-                              style: GoogleFonts.comfortaa(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.ink)),
-                          if (_longestStreak > _currentStreak) ...[
-                            const SizedBox(width: 8),
-                            Text('(best: $_longestStreak)',
-                                style: GoogleFonts.comfortaa(
-                                    fontSize: 11,
-                                    color: AppColors.inkFaint)),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: _done / todos.length,
+            minHeight: 3,
+            backgroundColor: AppColors.border,
+            valueColor: const AlwaysStoppedAnimation(AppColors.ink),
+          ),
         ),
       );
 

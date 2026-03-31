@@ -6,6 +6,8 @@ import '../../models/goal.dart';
 import '../../models/todo.dart';
 import '../../shared/services/ai_task_generator_service.dart';
 import '../../shared/services/storage_service.dart';
+import '../../shared/services/streak_service.dart';
+import '../../shared/widgets/streak_sheet.dart';
 
 class GoalListScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -30,6 +32,23 @@ class GoalListScreen extends StatefulWidget {
 class _GoalListScreenState extends State<GoalListScreen> {
   List<Goal> get goals => widget.goals;
   final _storage = StorageService();
+  StreakService? _streakService;
+  int _currentStreak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStreak();
+  }
+
+  Future<void> _loadStreak() async {
+    final service = await StreakService.init();
+    await service.checkAndUpdateStreak();
+    setState(() {
+      _streakService = service;
+      _currentStreak = service.getCurrentStreak();
+    });
+  }
   
   String _getTimeBasedGreeting() {
     final hour = DateTime.now().hour;
@@ -172,6 +191,35 @@ class _GoalListScreenState extends State<GoalListScreen> {
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: AppColors.inkLight)),
+                GestureDetector(
+                  onTap: () {
+                    if (_streakService != null) {
+                      showStreakSheet(context, _streakService!);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🔥', style: TextStyle(fontSize: 14)),
+                        const SizedBox(width: 5),
+                        Text(
+                          _currentStreak > 0 ? '$_currentStreak day streak' : 'Start streak',
+                          style: GoogleFonts.comfortaa(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
