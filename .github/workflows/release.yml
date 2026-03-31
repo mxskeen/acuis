@@ -81,13 +81,7 @@ jobs:
           mkdir -p $PKG pkg-deb/usr/bin pkg-deb/DEBIAN
           cp -r $BUNDLE/* $PKG/
           ln -s /usr/lib/acuis/acuis pkg-deb/usr/bin/acuis
-          cat > pkg-deb/DEBIAN/control <<'EOF'
-Package: acuis
-Version: 1.0.0
-Architecture: amd64
-Maintainer: acuis
-Description: Goal tracking app with visual progress feedback
-EOF
+          printf 'Package: acuis\nVersion: 1.0.0\nArchitecture: amd64\nMaintainer: acuis\nDescription: Goal tracking app\n' > pkg-deb/DEBIAN/control
           fakeroot dpkg-deb --build pkg-deb acuis.deb
 
       # ── .rpm (native rpmbuild, no alien) ──────────────────
@@ -99,26 +93,7 @@ EOF
           mkdir -p ~/rpmbuild/BUILDROOT/acuis-1.0.0-1.x86_64/usr/bin
           cp -r $BUNDLE/* ~/rpmbuild/BUILDROOT/acuis-1.0.0-1.x86_64/usr/lib/acuis/
           ln -s /usr/lib/acuis/acuis ~/rpmbuild/BUILDROOT/acuis-1.0.0-1.x86_64/usr/bin/acuis
-          cat > ~/rpmbuild/SPECS/acuis.spec <<'EOF'
-Name:    acuis
-Version: 1.0.0
-Release: 1
-Summary: Goal tracking app with visual progress feedback
-License: Proprietary
-BuildArch: x86_64
-
-%description
-Goal tracking app with visual progress feedback.
-
-%install
-# files already staged in BUILDROOT
-
-%files
-/usr/lib/acuis
-/usr/bin/acuis
-
-%changelog
-EOF
+          printf 'Name: acuis\nVersion: 1.0.0\nRelease: 1\nSummary: Goal tracking app\nLicense: Proprietary\nBuildArch: x86_64\n%%description\nGoal tracking app.\n%%install\n%%files\n/usr/lib/acuis\n/usr/bin/acuis\n%%changelog\n' > ~/rpmbuild/SPECS/acuis.spec
           rpmbuild -bb ~/rpmbuild/SPECS/acuis.spec
           mv ~/rpmbuild/RPMS/x86_64/acuis-*.rpm acuis.rpm
 
@@ -135,20 +110,8 @@ EOF
             cp acuis/assets/icon.png $APPDIR/usr/share/icons/hicolor/256x256/apps/acuis.png
           fi
 
-          cat > $APPDIR/acuis.desktop <<'EOF'
-[Desktop Entry]
-Name=acuis
-Exec=acuis
-Icon=acuis
-Type=Application
-Categories=Utility;
-EOF
-
-          cat > $APPDIR/AppRun <<'EOF'
-#!/bin/bash
-HERE="$(dirname "$(readlink -f "$0")")"
-exec "$HERE/usr/lib/acuis/acuis" "$@"
-EOF
+          printf '[Desktop Entry]\nName=acuis\nExec=acuis\nIcon=acuis\nType=Application\nCategories=Utility;\n' > $APPDIR/acuis.desktop
+          printf '#!/bin/bash\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/lib/acuis/acuis" "$@"\n' > $APPDIR/AppRun
           chmod +x $APPDIR/AppRun
 
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
