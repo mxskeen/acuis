@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../main.dart';
-import '../../models/todo.dart';
-import '../../shared/services/velocity_service.dart';
+import '../../../main.dart';
+import '../../../models/todo.dart';
+import '../../../shared/services/velocity_service.dart';
 
 /// Velocity Insights Widget
 ///
