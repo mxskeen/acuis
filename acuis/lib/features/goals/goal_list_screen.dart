@@ -99,7 +99,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.ink)),
-        content: Text('Please set your Ai API key in the Alignment tab to use AI task generation.',
+        content: Text('Set your API key in the Alignment tab to generate tasks.',
             style: GoogleFonts.comfortaa(
                 fontSize: 13, color: AppColors.inkLight, height: 1.4)),
         actions: [
@@ -207,7 +207,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🔥', style: TextStyle(fontSize: 14)),
+                        Icon(Icons.local_fire_department_rounded, size: 14, color: _currentStreak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint),
                         const SizedBox(width: 5),
                         Text(
                           _currentStreak > 0 ? '$_currentStreak' : '0',
@@ -702,6 +702,8 @@ class _GenerateTasksDialog extends StatefulWidget {
 
 class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
   bool _isGenerating = true;
+  bool _success = false;
+  int _tasksAdded = 0;
   List<GeneratedTask>? _tasks;
   List<TextEditingController> _controllers = [];
   String? _error;
@@ -714,7 +716,9 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
 
   @override
   void dispose() {
-    for (final c in _controllers) c.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -739,8 +743,96 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
     }
   }
 
+  void _addTasks() {
+    // Create updated tasks with edited titles
+    final editedTasks = <GeneratedTask>[];
+    for (int i = 0; i < (_tasks?.length ?? 0); i++) {
+      final original = _tasks![i];
+      final editedTitle = _controllers[i].text.trim();
+      if (editedTitle.isNotEmpty) {
+        editedTasks.add(GeneratedTask(
+          title: editedTitle,
+          effort: original.effort,
+          eisenhowerClass: original.eisenhowerClass,
+          smartScores: original.smartScores,
+          reason: original.reason,
+          bestTime: original.bestTime,
+          estimatedMinutes: original.estimatedMinutes,
+        ));
+      }
+    }
+    final service = AITaskGeneratorService(apiKey: widget.apiKey);
+    final todos = service.createTodosFromTasks(editedTasks, widget.goal.id);
+    widget.onTasksGenerated(todos);
+    setState(() {
+      _success = true;
+      _tasksAdded = todos.length;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Success state
+    if (_success) {
+      return AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF43A047).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle_rounded, size: 48, color: Color(0xFF43A047)),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '$_tasksAdded tasks added!',
+              style: GoogleFonts.comfortaa(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Ready to work on "${widget.goal.title}"',
+              style: GoogleFonts.comfortaa(
+                fontSize: 13,
+                color: AppColors.inkLight,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Stay Here',
+                style: GoogleFonts.comfortaa(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.inkLight)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to todos tab (index 2 now)
+              // This is handled by the parent
+            },
+            child: Text('View Tasks',
+                style: GoogleFonts.comfortaa(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF43A047))),
+          ),
+        ],
+      );
+    }
+
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -761,16 +853,36 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
               ],
             )
           : _error != null
-              ? Text('Error: $_error',
-                  style: GoogleFonts.comfortaa(
-                      fontSize: 13, color: Colors.red))
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Something went wrong',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink)),
+                    const SizedBox(height: 8),
+                    Text(_error!,
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 12, color: AppColors.inkLight),
+                        textAlign: TextAlign.center),
+                  ],
+                )
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Tap ✏️ to edit any task before adding',
-                        style: GoogleFonts.comfortaa(
-                            fontSize: 12, color: AppColors.inkFaint)),
+                    Row(
+                      children: [
+                        const Icon(Icons.edit_outlined, size: 14, color: AppColors.inkFaint),
+                        const SizedBox(width: 6),
+                        Text('Tap to edit any task before adding',
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 11, color: AppColors.inkFaint)),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                     ..._controllers.asMap().entries.map((entry) {
                       return _EditableTaskRow(
@@ -781,7 +893,7 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                   ],
                 ),
       actions: _isGenerating
-          ? []
+          ? null
           : _error != null
               ? [
                   TextButton(
@@ -803,28 +915,7 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                             color: AppColors.inkLight)),
                   ),
                   TextButton(
-                    onPressed: () {
-                      // Create updated tasks with edited titles
-                      final editedTasks = <GeneratedTask>[];
-                      for (int i = 0; i < (_tasks?.length ?? 0); i++) {
-                        final original = _tasks![i];
-                        final editedTitle = _controllers[i].text.trim();
-                        if (editedTitle.isNotEmpty) {
-                          editedTasks.add(GeneratedTask(
-                            title: editedTitle,
-                            effort: original.effort,
-                            eisenhowerClass: original.eisenhowerClass,
-                            smartScores: original.smartScores,
-                            reason: original.reason,
-                            bestTime: original.bestTime,
-                            estimatedMinutes: original.estimatedMinutes,
-                          ));
-                        }
-                      }
-                      final service = AITaskGeneratorService(apiKey: widget.apiKey);
-                      final todos = service.createTodosFromTasks(editedTasks, widget.goal.id);
-                      widget.onTasksGenerated(todos);
-                    },
+                    onPressed: _addTasks,
                     child: Text('Add All',
                         style: GoogleFonts.comfortaa(
                             fontSize: 14,

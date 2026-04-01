@@ -63,7 +63,7 @@ class _StreakSheet extends StatelessWidget {
           const SizedBox(height: 22),
           Row(
             children: [
-              const Text('🔥', style: TextStyle(fontSize: 22)),
+              const Icon(Icons.local_fire_department_rounded, size: 22, color: Color(0xFFFF6B35)),
               const SizedBox(width: 10),
               Text('Streak',
                   style: GoogleFonts.comfortaa(

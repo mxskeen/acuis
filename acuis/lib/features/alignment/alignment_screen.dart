@@ -16,14 +16,13 @@ import '../../shared/services/smart_defaults_service.dart';
 import '../../shared/services/xp_tracking_service.dart';
 import '../../shared/widgets/celebration_overlay.dart';
 import '../../shared/widgets/quick_add_todo_dialog.dart';
+import '../../shared/widgets/ambient_animations.dart' hide FloatingIcon;
 import 'widgets/eisenhower_quadrant.dart';
 import 'widgets/science_backed_growth_chart.dart';
 import 'widgets/smart_radar_chart.dart';
 import 'widgets/alignment_detail_sheet.dart';
-import 'widgets/weekly_heatmap.dart';
-import 'widgets/recommendations_widget.dart';
-import 'widgets/weekly_retrospective.dart';
 import 'widgets/velocity_insights.dart' as widgets;
+import 'widgets/interactive_details.dart';
 
 class AlignmentScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -301,42 +300,32 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
                     // Streak & Level card
                     if (_servicesInitialized)
-                      _buildStreakLevelCard(),
-
-                    if (_servicesInitialized)
-                      const SizedBox(height: 24),
-
-                    // Weekly Retrospective
-                    WeeklyRetrospective(
-                      todos: widget.todos,
-                      goals: widget.goals,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Weekly Heatmap
-                    WeeklyHeatmap(todos: widget.todos),
-
-                    const SizedBox(height: 24),
-
-                    // Velocity Insights
-                    if (_servicesInitialized)
-                      widgets.VelocityInsights(
-                        todos: widget.todos,
-                        velocityService: _velocityService!,
+                      GestureDetector(
+                        onTap: () => showStreakLevelDetail(
+                          context,
+                          streakService: _streakService!,
+                          gamificationService: _gamificationService!,
+                          todos: widget.todos,
+                        ),
+                        child: _buildStreakLevelCard(),
                       ),
 
                     if (_servicesInitialized)
                       const SizedBox(height: 24),
 
-                    // Smart Recommendations
+                    // Velocity Insights
                     if (_servicesInitialized)
-                      RecommendationsWidget(
-                        todos: widget.todos,
-                        goals: widget.goals,
-                        currentStreak: _streakService!.getCurrentStreak(),
-                        currentVelocity: _velocityService!.getVelocity(7),
-                        previousVelocity: _velocityService!.getVelocity(14) - _velocityService!.getVelocity(7),
+                      GestureDetector(
+                        onTap: () => showVelocityDetail(
+                          context,
+                          velocityService: _velocityService!,
+                          todos: widget.todos,
+                          goals: widget.goals,
+                        ),
+                        child: widgets.VelocityInsights(
+                          todos: widget.todos,
+                          velocityService: _velocityService!,
+                        ),
                       ),
 
                     if (_servicesInitialized)
@@ -384,7 +373,14 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
                     // SMART breakdown for goals
                     if (scoredTodos.any((t) => t.smartScores != null))
-                      _buildSMARTBreakdown(scoredTodos),
+                      GestureDetector(
+                        onTap: () => showSMARTDetail(
+                          context,
+                          scoredTodos: scoredTodos,
+                          onDataChanged: widget.onDataChanged,
+                        ),
+                        child: _buildSMARTBreakdown(scoredTodos),
+                      ),
 
                     const SizedBox(height: 24),
 
@@ -394,9 +390,21 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: AppColors.ink)),
+                    const SizedBox(height: 4),
+                    Text('Tap a goal for coaching',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 11, color: AppColors.inkFaint)),
                     const SizedBox(height: 12),
                     if (_servicesInitialized)
-                      ...widget.goals.map(_buildGoalStatsCard),
+                      ...widget.goals.map((goal) => GestureDetector(
+                        onTap: () => showGoalCoachDetail(
+                          context,
+                          goal: goal,
+                          todos: widget.todos,
+                          velocityService: _velocityService!,
+                        ),
+                        child: _buildGoalStatsCard(goal),
+                      )),
                   ],
                 ),
               ),
@@ -482,7 +490,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
     if (_nudgeService.streakAtRisk && _servicesInitialized) {
       final streak = _streakService!.getCurrentStreak();
-      message = 'Don\'t break your $streak-day streak! Complete 1 todo to keep it alive 🔥';
+      message = 'Don\'t break your $streak-day streak! Complete 1 todo to keep it alive.';
       icon = Icons.local_fire_department_outlined;
       bgColor = const Color(0xFFFFEBEE);
       textColor = const Color(0xFFC62828);
@@ -544,20 +552,15 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
   Widget _buildScoreCard(double score, int scoredCount, int linkedCount) {
     String milestone = '';
-    String emoji = '';
 
     if (score >= 90) {
       milestone = 'Perfectly Aligned';
-      emoji = '🎯';
     } else if (score >= 75) {
       milestone = 'Great Alignment';
-      emoji = '⭐';
     } else if (score >= 50) {
       milestone = 'Good Progress';
-      emoji = '📈';
     } else if (score > 0) {
       milestone = 'Getting Started';
-      emoji = '🌱';
     }
 
     return Container(
@@ -571,29 +574,18 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
         children: [
           Row(
             children: [
-              SizedBox(
-                width: 80,
-                height: 80,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CircularProgressIndicator(
-                      value: score / 100,
-                      strokeWidth: 8,
-                      backgroundColor: AppColors.bg,
-                      valueColor: const AlwaysStoppedAnimation(AppColors.ink),
-                    ),
-                    Center(
-                      child: Text(
-                        '${score.round()}%',
-                        style: GoogleFonts.comfortaa(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                    ),
-                  ],
+              AnimatedProgressRing(
+                value: score,
+                size: 80,
+                strokeWidth: 8,
+                child: AnimatedCounter(
+                  value: score.round(),
+                  suffix: '%',
+                  style: GoogleFonts.comfortaa(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
                 ),
               ),
               const SizedBox(width: 24),
@@ -623,18 +615,11 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                 color: AppColors.chip,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(emoji, style: const TextStyle(fontSize: 18)),
-                  const SizedBox(width: 8),
-                  Text(milestone,
-                      style: GoogleFonts.comfortaa(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink)),
-                ],
-              ),
+              child: Text(milestone,
+                  style: GoogleFonts.comfortaa(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink)),
             ),
           ],
           const SizedBox(height: 12),
@@ -660,105 +645,134 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     final level = _gamificationService!.getLevel();
     final points = _gamificationService!.getTotalPoints();
     final levelProgress = _gamificationService!.getLevelProgress();
+    final streakAtRisk = _nudgeService.streakAtRisk;
 
-    return Container(
+    Widget cardContent = Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: streakAtRisk ? const Color(0xFFFF6B35).withValues(alpha: 0.3) : AppColors.border,
+        ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Streak
-          Expanded(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          Row(
+            children: [
+              // Streak
+              Expanded(
+                child: Column(
                   children: [
-                    const Text('🔥', style: TextStyle(fontSize: 24)),
-                    const SizedBox(width: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.local_fire_department_rounded,
+                          size: streakAtRisk ? 28 : 24,
+                          color: streak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint,
+                        ),
+                        const SizedBox(width: 6),
+                        AnimatedCounter(
+                          value: streak,
+                          style: GoogleFonts.comfortaa(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: streak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      '$streak',
+                      'day streak',
                       style: GoogleFonts.comfortaa(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: streak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint,
+                        fontSize: 11,
+                        color: AppColors.inkFaint,
                       ),
+                    ),
+                    if (longestStreak > streak)
+                      Text(
+                        'Best: $longestStreak',
+                        style: GoogleFonts.comfortaa(
+                          fontSize: 9,
+                          color: AppColors.inkFaint,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // Divider
+              Container(
+                width: 1,
+                height: 50,
+                color: AppColors.border,
+              ),
+
+              // Level
+              Expanded(
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.star_rounded, size: 20, color: Color(0xFFFFB700)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Lv.$level',
+                          style: GoogleFonts.comfortaa(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    AnimatedProgressBar(
+                      value: levelProgress,
+                      height: 4,
+                      color: const Color(0xFFFFB700),
+                    ),
+                    const SizedBox(height: 2),
+                    AnimatedCounter(
+                      value: points,
+                      suffix: ' pts',
+                      style: GoogleFonts.comfortaa(
+                        fontSize: 9,
+                        color: AppColors.inkFaint,
+                      ),
+                      duration: const Duration(milliseconds: 600),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'day streak',
-                  style: GoogleFonts.comfortaa(
-                    fontSize: 11,
-                    color: AppColors.inkFaint,
-                  ),
-                ),
-                if (longestStreak > streak)
-                  Text(
-                    'Best: $longestStreak',
-                    style: GoogleFonts.comfortaa(
-                      fontSize: 9,
-                      color: AppColors.inkFaint,
-                    ),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
-
-          // Divider
-          Container(
-            width: 1,
-            height: 50,
-            color: AppColors.border,
-          ),
-
-          // Level
-          Expanded(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('⭐', style: TextStyle(fontSize: 20)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Lv.$level',
-                      style: GoogleFonts.comfortaa(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: levelProgress,
-                    minHeight: 4,
-                    backgroundColor: AppColors.border,
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFFFFB700)),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$points pts',
-                  style: GoogleFonts.comfortaa(
-                    fontSize: 9,
-                    color: AppColors.inkFaint,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Tap for insights',
+                  style: GoogleFonts.comfortaa(fontSize: 10, color: AppColors.inkFaint)),
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_forward_ios_rounded, size: 8, color: AppColors.inkFaint),
+            ],
           ),
         ],
       ),
     );
+
+    // Wrap in pulsing glow if streak is at risk
+    if (streakAtRisk && streak > 0) {
+      return PulsingGlow(
+        glowColor: const Color(0xFFFF6B35),
+        maxGlowRadius: 8,
+        child: cardContent,
+      );
+    }
+    return cardContent;
   }
 
   Widget _buildSMARTBreakdown(List<Todo> scoredTodos) {
@@ -836,6 +850,16 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Tap for task suggestions',
+                style: GoogleFonts.comfortaa(fontSize: 10, color: AppColors.inkFaint)),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 8, color: AppColors.inkFaint),
+          ],
+        ),
       ],
     );
   }
@@ -902,6 +926,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     // Get velocity prediction
     final prediction = _velocityService!.predictCompletion(goal, goalTodos);
     final status = _velocityService!.getGoalProgressStatus(goal, goalTodos);
+    final progress = goalTodos.isEmpty ? 0.0 : completed / goalTodos.length;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -949,14 +974,10 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                         style: GoogleFonts.comfortaa(
                             fontSize: 11, color: AppColors.inkFaint)),
                     const SizedBox(height: 4),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: goalTodos.isEmpty ? 0 : completed / goalTodos.length,
-                        minHeight: 4,
-                        backgroundColor: AppColors.border,
-                        valueColor: const AlwaysStoppedAnimation(AppColors.ink),
-                      ),
+                    AnimatedProgressBar(
+                      value: progress,
+                      height: 4,
+                      color: _getStatusColor(status),
                     ),
                     const SizedBox(height: 6),
                     Text('$completed of ${goalTodos.length} todos done',
