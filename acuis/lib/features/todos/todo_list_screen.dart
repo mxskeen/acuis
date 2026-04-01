@@ -34,9 +34,21 @@ class TodoListScreen extends StatefulWidget {
 
 class _TodoListScreenState extends State<TodoListScreen> {
   List<Todo> get todos => widget.todos;
-  int get _done => todos.where((t) => t.completed).length;
   StreakService? _streakService;
   int _currentStreak = 0;
+  String? _selectedGoalId; // null means "All Goals"
+
+  /// Todos filtered by selected goal
+  List<Todo> get _filteredTodos {
+    if (_selectedGoalId == null) return todos;
+    return todos.where((t) => t.goalId == _selectedGoalId).toList();
+  }
+
+  /// Pending (not completed) todos
+  List<Todo> get _pendingTodos => _filteredTodos.where((t) => !t.completed).toList();
+
+  /// Completed todos
+  List<Todo> get _completedTodos => _filteredTodos.where((t) => t.completed).toList();
 
   @override
   void initState() {
@@ -54,7 +66,9 @@ class _TodoListScreenState extends State<TodoListScreen> {
   
   Future<void> _checkStreakUpdate() async {
     if (_streakService == null) return;
-    if (_done == todos.length && todos.isNotEmpty) {
+    // Check if all todos (not just filtered) are completed for streak
+    final allDone = todos.isNotEmpty && todos.every((t) => t.completed);
+    if (allDone) {
       await _streakService!.recordCompletion();
       setState(() {
         _currentStreak = _streakService!.getCurrentStreak();
@@ -63,8 +77,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
   }
   
   String _getIllustrationForProgress() {
-    if (todos.isEmpty) return 'assets/illustrations/girl-reading-book.svg';
-    final progress = _done / todos.length;
+    if (_filteredTodos.isEmpty) return 'assets/illustrations/girl-reading-book.svg';
+    final progress = _completedTodos.length / _filteredTodos.length;
     if (progress == 1.0) return 'assets/illustrations/ballet-dancer.svg'; // 100% - Celebration!
     if (progress >= 0.5) return 'assets/illustrations/girl-reading-book.svg'; // 50%+ - Keep reading/working
     return 'assets/illustrations/girl-reading-book.svg'; // Starting out
@@ -74,7 +88,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      floatingActionButton: todos.isNotEmpty ? _buildFAB() : null,
+      floatingActionButton: _filteredTodos.isNotEmpty ? _buildFAB() : null,
       body: Stack(
         children: [
           SafeArea(
@@ -82,14 +96,15 @@ class _TodoListScreenState extends State<TodoListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(),
-                if (todos.isNotEmpty) _buildProgress(),
+                if (_filteredTodos.isNotEmpty) _buildProgress(),
+                if (widget.goals.isNotEmpty && todos.isNotEmpty) _buildGoalFilter(),
                 Expanded(
-                  child: todos.isEmpty ? _buildEmpty() : _buildList(),
+                  child: _filteredTodos.isEmpty ? _buildEmpty() : _buildList(),
                 ),
               ],
             ),
           ),
-          if (_done == todos.length && todos.isNotEmpty)
+          if (_pendingTodos.isEmpty && _completedTodos.isNotEmpty)
             _buildCelebrationOverlay(),
         ],
       ),
@@ -139,7 +154,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (todos.isNotEmpty) ...[
+            if (_filteredTodos.isNotEmpty) ...[
               Center(
                 child: Column(
                   children: [
@@ -152,7 +167,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                         height: 100,
                       ),
                     ),
-                    if (_done == todos.length && todos.isNotEmpty) ...[
+                    if (_pendingTodos.isEmpty && _completedTodos.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Text('🎉 All done!',
                           style: GoogleFonts.comfortaa(
@@ -183,9 +198,9 @@ class _TodoListScreenState extends State<TodoListScreen> {
                             height: 1.1)),
                     const SizedBox(height: 3),
                     Text(
-                      todos.isEmpty
+                      _filteredTodos.isEmpty
                           ? 'What needs doing today?'
-                          : '$_done of ${todos.length} done',
+                          : '${_completedTodos.length} of ${_filteredTodos.length} done',
                       style: GoogleFonts.comfortaa(
                           fontSize: 12, color: AppColors.inkLight),
                     ),
@@ -231,10 +246,60 @@ class _TodoListScreenState extends State<TodoListScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(3),
           child: LinearProgressIndicator(
-            value: _done / todos.length,
+            value: _filteredTodos.isEmpty ? 0 : _completedTodos.length / _filteredTodos.length,
             minHeight: 3,
             backgroundColor: AppColors.border,
             valueColor: const AlwaysStoppedAnimation(AppColors.ink),
+          ),
+        ),
+      );
+
+  Widget _buildGoalFilter() => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedGoalId,
+              isExpanded: true,
+              dropdownColor: AppColors.surface,
+              style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.ink),
+              hint: Row(
+                children: [
+                  const Icon(Icons.filter_list, size: 18, color: AppColors.inkLight),
+                  const SizedBox(width: 8),
+                  Text('All Goals',
+                      style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.inkLight)),
+                ],
+              ),
+              items: [
+                DropdownMenuItem<String>(
+                  value: null,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.select_all, size: 18, color: AppColors.inkLight),
+                      const SizedBox(width: 8),
+                      Text('All Goals', style: GoogleFonts.comfortaa(fontSize: 13)),
+                    ],
+                  ),
+                ),
+                ...widget.goals.map((g) => DropdownMenuItem(
+                    value: g.id,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.flag, size: 18, color: AppColors.inkLight),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(g.title, overflow: TextOverflow.ellipsis)),
+                      ],
+                    ))),
+              ],
+              onChanged: (v) => setState(() => _selectedGoalId = v),
+            ),
           ),
         ),
       );
@@ -274,32 +339,73 @@ class _TodoListScreenState extends State<TodoListScreen> {
         ),
       );
 
-  Widget _buildList() => ListView.builder(
+  Widget _buildList() => ListView(
         padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
-        itemCount: todos.length,
-        itemBuilder: (_, i) => _TodoCard(
-          todo: todos[i],
-          goals: widget.goals,
-          onToggle: () {
-            final wasCompleted = todos[i].completed;
-            widget.onToggle(i);
-            _checkStreakUpdate();
-
-            // Show tiny habits prompt when completing a todo (not uncompleting)
-            if (!wasCompleted && todos[i].completed) {
-              Future.delayed(const Duration(milliseconds: 300), () {
-                if (mounted) {
-                  showTinyHabitsPrompt(
-                    context,
-                    onAddAnother: () => _showSheet(),
-                    onDone: () {},
-                  );
-                }
-              });
-            }
-          },
-          onLongPress: () => _showEditSheet(i),
-        ),
+        children: [
+          // Pending section
+          if (_pendingTodos.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                'To Do',
+                style: GoogleFonts.comfortaa(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
+              ),
+            ),
+            ..._pendingTodos.map((todo) {
+              final index = todos.indexOf(todo);
+              return _TodoCard(
+                todo: todo,
+                goals: widget.goals,
+                onToggle: () {
+                  widget.onToggle(index);
+                  _checkStreakUpdate();
+                  if (!todo.completed) {
+                    Future.delayed(const Duration(milliseconds: 300), () {
+                      if (mounted) {
+                        showTinyHabitsPrompt(
+                          context,
+                          onAddAnother: () => _showSheet(),
+                          onDone: () {},
+                        );
+                      }
+                    });
+                  }
+                },
+                onLongPress: () => _showEditSheet(index),
+              );
+            }),
+          ],
+          // Completed section
+          if (_completedTodos.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                'Completed',
+                style: GoogleFonts.comfortaa(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.inkLight,
+                ),
+              ),
+            ),
+            ..._completedTodos.map((todo) {
+              final index = todos.indexOf(todo);
+              return _TodoCard(
+                todo: todo,
+                goals: widget.goals,
+                onToggle: () {
+                  widget.onToggle(index);
+                },
+                onLongPress: () => _showEditSheet(index),
+              );
+            }),
+          ],
+        ],
       );
 
   void _showSheet() {
