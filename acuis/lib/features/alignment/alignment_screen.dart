@@ -11,17 +11,26 @@ import '../../shared/services/velocity_service.dart';
 import '../../shared/services/gamification_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/services/alignment_refresh_service.dart';
+import '../../shared/services/nudge_service.dart';
+import '../../shared/services/smart_defaults_service.dart';
+import '../../shared/services/xp_tracking_service.dart';
 import '../../shared/widgets/celebration_overlay.dart';
+import '../../shared/widgets/quick_add_todo_dialog.dart';
 import 'widgets/eisenhower_quadrant.dart';
 import 'widgets/science_backed_growth_chart.dart';
 import 'widgets/smart_radar_chart.dart';
 import 'widgets/alignment_detail_sheet.dart';
+import 'widgets/weekly_heatmap.dart';
+import 'widgets/recommendations_widget.dart';
+import 'widgets/weekly_retrospective.dart';
+import 'widgets/velocity_insights.dart' as widgets;
 
 class AlignmentScreen extends StatefulWidget {
   final List<Goal> goals;
   final List<Todo> todos;
   final AlignmentRefreshService refreshService;
   final void Function(List<Todo> updatedTodos) onDataChanged;
+  final void Function(Todo) onAddTodo;
 
   const AlignmentScreen({
     super.key,
@@ -29,6 +38,7 @@ class AlignmentScreen extends StatefulWidget {
     required this.todos,
     required this.refreshService,
     required this.onDataChanged,
+    required this.onAddTodo,
   });
 
   @override
@@ -42,20 +52,50 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   late VelocityService _velocityService;
   late GamificationService _gamificationService;
   late StreakService _streakService;
+  late NudgeService _nudgeService;
+  late XPTrackingService _xpTrackingService;
   int _lastRefreshVersion = 0;
 
   @override
   void initState() {
     super.initState();
     _apiKey = _storage.loadApiKeySync() ?? '';
+    _nudgeService = NudgeService();
     _initServices();
     widget.refreshService.addListener(_onRefreshTriggered);
+    _updateNudges();
   }
 
   @override
   void dispose() {
     widget.refreshService.removeListener(_onRefreshTriggered);
+    _nudgeService.dispose();
     super.dispose();
+  }
+
+  void _updateNudges() {
+    // Update unanalyzed todos count
+    final linkedTodos = widget.todos.where((t) => t.goalId != null).toList();
+    final unanalyzedCount = linkedTodos.where((t) => t.alignmentScore == null).length;
+    _nudgeService.updateUnanalyzedCount(unanalyzedCount);
+
+    // Check streak risk
+    final today = DateTime.now();
+    final completedToday = widget.todos.where((t) {
+      return t.completed &&
+             t.createdAt.year == today.year &&
+             t.createdAt.month == today.month &&
+             t.createdAt.day == today.day;
+    }).length;
+
+    final currentStreak = _streakService.getCurrentStreak();
+    _nudgeService.checkStreakRisk(completedToday == 0 && currentStreak > 0, currentStreak);
+
+    // Update time-based nudges
+    final highImpactTodos = linkedTodos.where((t) =>
+      !t.completed && (t.alignmentScore ?? 0) >= 75
+    ).length;
+    _nudgeService.updateTimeBasedNudges(highImpactTodos, completedToday);
   }
 
   void _onRefreshTriggered() {
@@ -79,6 +119,13 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     _streakService = await StreakService.init();
     _velocityService = await VelocityService.init();
     _gamificationService = await GamificationService.init();
+    _xpTrackingService = await XPTrackingService.init();
+
+    // Clean up deleted todos from XP tracking
+    await _xpTrackingService.cleanupDeletedTodos(
+      widget.todos.map((t) => t.id).toList(),
+    );
+
     if (mounted) setState(() {});
   }
 
@@ -149,6 +196,9 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   void _checkCelebrations(List<Todo> todos) {
     // Check for high alignment completions
     for (final todo in todos.where((t) => t.completed)) {
+      // Skip if this todo has already been rewarded
+      if (_xpTrackingService.hasBeenRewarded(todo.id)) continue;
+
       final goal = widget.goals.firstWhere(
         (g) => g.id == todo.goalId,
         orElse: () => widget.goals.first,
@@ -157,6 +207,9 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
       final celebration = _gamificationService.checkCelebration(todo, goal);
       if (celebration != null) {
         showCelebration(context, celebration);
+
+        // Mark as rewarded before adding points to prevent duplicates
+        _xpTrackingService.markTodoAsRewarded(todo.id);
 
         // Add points
         final levelUp = _gamificationService.addPoints(celebration.points);
@@ -199,20 +252,33 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
       overallScore = scoredTodos.map((t) => t.alignmentScore!).reduce((a, b) => a + b) / scoredTodos.length;
     }
 
+    // Update nudges on every build
+    _updateNudges();
+
     return Scaffold(
       backgroundColor: AppColors.bg,
+      floatingActionButton: widget.goals.isNotEmpty ? _buildQuickAddFAB() : null,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
+            // Show nudge banner if applicable
+            if (_nudgeService.unanalyzedTodosCount > 0 || _nudgeService.streakAtRisk)
+              _buildNudgeBanner(),
             if (widget.goals.isEmpty || widget.todos.isEmpty)
               _buildEmpty()
             else
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  children: [
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    if (!_isAnalyzing && _apiKey.isNotEmpty) {
+                      await _analyze();
+                    }
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    children: [
                     GestureDetector(
                       onTap: () => showAlignmentDetail(
                         context,
@@ -226,6 +292,38 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
                     // Streak & Level card
                     _buildStreakLevelCard(),
+
+                    const SizedBox(height: 24),
+
+                    // Weekly Retrospective
+                    WeeklyRetrospective(
+                      todos: widget.todos,
+                      goals: widget.goals,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Weekly Heatmap
+                    WeeklyHeatmap(todos: widget.todos),
+
+                    const SizedBox(height: 24),
+
+                    // Velocity Insights
+                    widgets.VelocityInsights(
+                      todos: widget.todos,
+                      velocityService: _velocityService,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Smart Recommendations
+                    RecommendationsWidget(
+                      todos: widget.todos,
+                      goals: widget.goals,
+                      currentStreak: _streakService.getCurrentStreak(),
+                      currentVelocity: _velocityService.getVelocity(7),
+                      previousVelocity: _velocityService.getVelocity(14) - _velocityService.getVelocity(7),
+                    ),
 
                     const SizedBox(height: 24),
 
@@ -282,12 +380,10 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                             color: AppColors.ink)),
                     const SizedBox(height: 12),
                     ...widget.goals.map(_buildGoalStatsCard),
-
-                    const SizedBox(height: 24),
-                    _buildAnalyzeButton(),
                   ],
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -318,13 +414,94 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                 ],
               ),
             ),
-            IconButton(
-              onPressed: () => _showSettingsSheet(context),
-              icon: const Icon(Icons.settings_outlined, color: AppColors.ink),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_nudgeService.unanalyzedTodosCount > 0)
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B35),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_nudgeService.unanalyzedTodosCount}',
+                      style: GoogleFonts.comfortaa(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                IconButton(
+                  onPressed: _isAnalyzing ? null : _analyze,
+                  icon: _isAnalyzing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.inkLight,
+                          ),
+                        )
+                      : const Icon(Icons.refresh_rounded, color: AppColors.ink),
+                ),
+                IconButton(
+                  onPressed: () => _showSettingsSheet(context),
+                  icon: const Icon(Icons.settings_outlined, color: AppColors.ink),
+                ),
+              ],
             ),
           ],
         ),
       );
+
+  Widget _buildNudgeBanner() {
+    String message = '';
+    IconData icon = Icons.info_outline;
+    Color bgColor = const Color(0xFFFFF3E0);
+    Color textColor = const Color(0xFFE65100);
+
+    if (_nudgeService.streakAtRisk) {
+      final streak = _streakService.getCurrentStreak();
+      message = 'Don\'t break your $streak-day streak! Complete 1 todo to keep it alive 🔥';
+      icon = Icons.local_fire_department_outlined;
+      bgColor = const Color(0xFFFFEBEE);
+      textColor = const Color(0xFFC62828);
+    } else if (_nudgeService.unanalyzedTodosCount > 0) {
+      message = 'You have ${_nudgeService.unanalyzedTodosCount} unanalyzed todos. Tap refresh to analyze.';
+      icon = Icons.analytics_outlined;
+    }
+
+    if (message.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: textColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.comfortaa(
+                fontSize: 12,
+                color: textColor,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildEmpty() => Expanded(
         child: Center(
@@ -807,30 +984,32 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     };
   }
 
-  Widget _buildAnalyzeButton() {
-    return GestureDetector(
-      onTap: _isAnalyzing ? null : _analyze,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: _isAnalyzing ? AppColors.chip : AppColors.ink,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Center(
-          child: _isAnalyzing
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.inkLight),
-                )
-              : Text('Refresh Analysis',
-                  style: GoogleFonts.comfortaa(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15)),
-        ),
+  Widget _buildQuickAddFAB() {
+    // Find most active goal (goal with most todos)
+    String? mostActiveGoalId;
+    if (widget.goals.isNotEmpty) {
+      mostActiveGoalId = SmartDefaultsService.getSmartGoalSuggestion(
+        widget.goals,
+        widget.todos,
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: FloatingActionButton(
+        onPressed: () {
+          showQuickAddTodoDialog(
+            context,
+            goals: widget.goals,
+            todos: widget.todos,
+            onAdd: widget.onAddTodo,
+            preselectedGoalId: mostActiveGoalId,
+          );
+        },
+        backgroundColor: AppColors.ink,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.add, color: Colors.white, size: 22),
       ),
     );
   }
