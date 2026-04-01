@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../main.dart';
-import '../../models/todo.dart';
-import '../../models/goal.dart';
-import '../../shared/services/recommendation_engine.dart';
+import '../../../main.dart';
+import '../../../models/todo.dart';
+import '../../../models/goal.dart';
+import '../../../shared/services/recommendation_engine.dart';
 
 /// Recommendations Widget
 ///
