@@ -223,7 +223,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FloatingIcon(emoji: '🔥', size: 14),
+                        Icon(Icons.local_fire_department_rounded, size: 14, color: _currentStreak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint),
                         const SizedBox(width: 5),
                         AnimatedCounter(
                           value: _currentStreak,

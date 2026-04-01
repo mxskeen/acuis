@@ -177,7 +177,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('⭐', style: TextStyle(fontSize: 16)),
+                  const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFB700)),
                   const SizedBox(width: 6),
                   Text(
                     '+${widget.celebration.points} points',

@@ -16,7 +16,7 @@ import '../../shared/services/smart_defaults_service.dart';
 import '../../shared/services/xp_tracking_service.dart';
 import '../../shared/widgets/celebration_overlay.dart';
 import '../../shared/widgets/quick_add_todo_dialog.dart';
-import '../../shared/widgets/ambient_animations.dart';
+import '../../shared/widgets/ambient_animations.dart' hide FloatingIcon;
 import 'widgets/eisenhower_quadrant.dart';
 import 'widgets/science_backed_growth_chart.dart';
 import 'widgets/smart_radar_chart.dart';
@@ -391,7 +391,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                             fontWeight: FontWeight.w700,
                             color: AppColors.ink)),
                     const SizedBox(height: 4),
-                    Text('Tap a goal for AI coaching',
+                    Text('Tap a goal for coaching',
                         style: GoogleFonts.comfortaa(
                             fontSize: 11, color: AppColors.inkFaint)),
                     const SizedBox(height: 12),
@@ -490,7 +490,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
     if (_nudgeService.streakAtRisk && _servicesInitialized) {
       final streak = _streakService!.getCurrentStreak();
-      message = 'Don\'t break your $streak-day streak! Complete 1 todo to keep it alive 🔥';
+      message = 'Don\'t break your $streak-day streak! Complete 1 todo to keep it alive.';
       icon = Icons.local_fire_department_outlined;
       bgColor = const Color(0xFFFFEBEE);
       textColor = const Color(0xFFC62828);
@@ -552,20 +552,15 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
   Widget _buildScoreCard(double score, int scoredCount, int linkedCount) {
     String milestone = '';
-    String emoji = '';
 
     if (score >= 90) {
       milestone = 'Perfectly Aligned';
-      emoji = '🎯';
     } else if (score >= 75) {
       milestone = 'Great Alignment';
-      emoji = '⭐';
     } else if (score >= 50) {
       milestone = 'Good Progress';
-      emoji = '📈';
     } else if (score > 0) {
       milestone = 'Getting Started';
-      emoji = '🌱';
     }
 
     return Container(
@@ -620,18 +615,11 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                 color: AppColors.chip,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FloatingIcon(emoji: emoji, size: 18),
-                  const SizedBox(width: 8),
-                  Text(milestone,
-                      style: GoogleFonts.comfortaa(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink)),
-                ],
-              ),
+              child: Text(milestone,
+                  style: GoogleFonts.comfortaa(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink)),
             ),
           ],
           const SizedBox(height: 12),
@@ -679,7 +667,11 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        FloatingIcon(emoji: '🔥', size: streakAtRisk ? 28 : 24),
+                        Icon(
+                          Icons.local_fire_department_rounded,
+                          size: streakAtRisk ? 28 : 24,
+                          color: streak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint,
+                        ),
                         const SizedBox(width: 6),
                         AnimatedCounter(
                           value: streak,
@@ -725,7 +717,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('⭐', style: TextStyle(fontSize: 20)),
+                        const Icon(Icons.star_rounded, size: 20, color: Color(0xFFFFB700)),
                         const SizedBox(width: 4),
                         Text(
                           'Lv.$level',
@@ -762,7 +754,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Tap for AI Coach',
+              Text('Tap for insights',
                   style: GoogleFonts.comfortaa(fontSize: 10, color: AppColors.inkFaint)),
               const SizedBox(width: 4),
               const Icon(Icons.arrow_forward_ios_rounded, size: 8, color: AppColors.inkFaint),
@@ -862,7 +854,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Tap for AI task suggestions',
+            Text('Tap for task suggestions',
                 style: GoogleFonts.comfortaa(fontSize: 10, color: AppColors.inkFaint)),
             const SizedBox(width: 4),
             const Icon(Icons.arrow_forward_ios_rounded, size: 8, color: AppColors.inkFaint),

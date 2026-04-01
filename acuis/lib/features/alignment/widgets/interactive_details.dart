@@ -168,7 +168,7 @@ class _StreakLevelDetailSheetState extends State<_StreakLevelDetailSheet> {
                         color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Text('🔥', style: TextStyle(fontSize: 32)),
+                      child: const Icon(Icons.local_fire_department_rounded, size: 32, color: Color(0xFFFF6B35)),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -203,7 +203,7 @@ class _StreakLevelDetailSheetState extends State<_StreakLevelDetailSheet> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('🔥', style: TextStyle(fontSize: 48)),
+                          Icon(Icons.local_fire_department_rounded, size: 48, color: streak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint),
                           const SizedBox(width: 12),
                           Text('$streak',
                               style: GoogleFonts.comfortaa(
@@ -239,7 +239,7 @@ class _StreakLevelDetailSheetState extends State<_StreakLevelDetailSheet> {
                     children: [
                       Row(
                         children: [
-                          const Text('⭐', style: TextStyle(fontSize: 24)),
+                          const Icon(Icons.star_rounded, size: 24, color: Color(0xFFFFB700)),
                           const SizedBox(width: 8),
                           Text('Level $level',
                               style: GoogleFonts.comfortaa(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.ink)),
@@ -279,9 +279,9 @@ class _StreakLevelDetailSheetState extends State<_StreakLevelDetailSheet> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.auto_awesome, size: 18, color: AppColors.ink),
+                          const Icon(Icons.tips_and_updates_outlined, size: 18, color: AppColors.ink),
                           const SizedBox(width: 8),
-                          Text('AI Coach Says',
+                          Text('Insights',
                               style: GoogleFonts.comfortaa(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
                         ],
                       ),
@@ -560,9 +560,9 @@ class _VelocityDetailSheetState extends State<_VelocityDetailSheet> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.auto_awesome, size: 18, color: AppColors.ink),
+                          const Icon(Icons.tips_and_updates_outlined, size: 18, color: AppColors.ink),
                           const SizedBox(width: 8),
-                          Text('AI Insights',
+                          Text('Insights',
                               style: GoogleFonts.comfortaa(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
                         ],
                       ),
@@ -786,7 +786,7 @@ class _SMARTDetailSheetState extends State<_SMARTDetailSheet> {
                         children: [
                           Text('SMART Improver',
                               style: GoogleFonts.comfortaa(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.ink)),
-                          Text('AI-powered task refinement',
+                          Text('Task refinement suggestions',
                               style: GoogleFonts.comfortaa(fontSize: 12, color: AppColors.inkFaint)),
                         ],
                       ),
@@ -1196,7 +1196,7 @@ class _GoalCoachSheetState extends State<_GoalCoachSheet> {
                   ),
                 const SizedBox(height: 24),
 
-                // AI Coaching
+                // Coaching
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -1209,9 +1209,9 @@ class _GoalCoachSheetState extends State<_GoalCoachSheet> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.auto_awesome, size: 18, color: AppColors.ink),
+                          const Icon(Icons.tips_and_updates_outlined, size: 18, color: AppColors.ink),
                           const SizedBox(width: 8),
-                          Text('AI Coach',
+                          Text('Coaching',
                               style: GoogleFonts.comfortaa(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
                         ],
                       ),
