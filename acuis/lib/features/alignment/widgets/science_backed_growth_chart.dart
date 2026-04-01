@@ -201,7 +201,7 @@ class _ScienceBackedGrowthChartState extends State<ScienceBackedGrowthChart>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
+        color: statusColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -282,7 +282,7 @@ class _ScienceBackedGrowthChartState extends State<ScienceBackedGrowthChart>
             width: 20,
             height: 10,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
+              color: color.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(2),
             ),
           )
@@ -491,7 +491,7 @@ class _GrowthChartPainter extends CustomPainter {
     final animProgress = (animation - 0.5) * 2; // Start projection after historical
 
     final paint = Paint()
-      ..color = AppColors.ink.withOpacity(0.5)
+      ..color = AppColors.ink.withValues(alpha: 0.5)
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -559,7 +559,7 @@ class _GrowthChartPainter extends CustomPainter {
     bandPath.close();
 
     final bandPaint = Paint()
-      ..color = AppColors.ink.withOpacity(0.08 * animProgress)
+      ..color = AppColors.ink.withValues(alpha: 0.08 * animProgress)
       ..style = PaintingStyle.fill;
 
     canvas.drawPath(bandPath, bandPaint);
@@ -576,7 +576,7 @@ class _GrowthChartPainter extends CustomPainter {
     final x = _leftPad + (targetDay / totalDays) * cw;
 
     final paint = Paint()
-      ..color = const Color(0xFFE53935).withOpacity(0.6 * animProgress)
+      ..color = const Color(0xFFE53935).withValues(alpha: 0.6 * animProgress)
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 

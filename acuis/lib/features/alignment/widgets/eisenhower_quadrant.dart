@@ -185,7 +185,7 @@ class _EisenhowerQuadrantState extends State<EisenhowerQuadrant>
         child: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: _getQuadrantColor(eClass).withOpacity(0.08),
+            color: _getQuadrantColor(eClass).withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _selectedQuadrant == eClass
@@ -353,7 +353,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.inkFaint.withOpacity(0.3)
+      ..color = AppColors.inkFaint.withValues(alpha: 0.3)
       ..strokeWidth = 1.0
       ..strokeCap = StrokeCap.round;
 
@@ -417,8 +417,8 @@ class _QuadrantDotsPainter extends CustomPainter {
 
       final paint = Paint()
         ..color = todo.completed
-            ? color.withOpacity(0.4)
-            : color.withOpacity(0.8)
+            ? color.withValues(alpha: 0.4)
+            : color.withValues(alpha: 0.8)
         ..style = PaintingStyle.fill;
 
       canvas.drawCircle(Offset(x, y), radius, paint);
@@ -517,7 +517,7 @@ class _QuadrantDetailSheet extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
+                        color: color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -563,7 +563,7 @@ class _QuadrantDetailSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -589,7 +589,7 @@ class _QuadrantDetailSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_circle_outline, size: 48, color: color.withOpacity(0.5)),
+          Icon(Icons.check_circle_outline, size: 48, color: color.withValues(alpha: 0.5)),
           const SizedBox(height: 12),
           Text(
             'No tasks in this quadrant',

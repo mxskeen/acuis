@@ -121,13 +121,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onPageChanged(int i) {
+    final wasOnAlignment = _idx == 2;
     setState(() => _idx = i);
 
     // Notify refresh service about screen visibility
     if (i == 2) {
       // Alignment screen is visible
       _refreshService.onScreenVisible();
-    } else if (_idx == 2) {
+    } else if (wasOnAlignment) {
       // Was on alignment screen, now leaving
       _refreshService.onScreenHidden();
     }

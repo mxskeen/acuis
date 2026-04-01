@@ -11,7 +11,6 @@ class StorageService {
   static const _apiKeyKey = 'acuis_nvidia_api_key';
   static const _userNameKey = 'acuis_user_name';
   static const _velocitySnapshotsKey = 'acuis_velocity_snapshots';
-  static const _gamificationKey = 'acuis_gamification';
 
   static late final SharedPreferences _prefs;
 

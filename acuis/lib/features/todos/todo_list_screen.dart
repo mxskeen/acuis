@@ -37,20 +37,18 @@ class _TodoListScreenState extends State<TodoListScreen> {
   int get _done => todos.where((t) => t.completed).length;
   StreakService? _streakService;
   int _currentStreak = 0;
-  int _longestStreak = 0;
-  
+
   @override
   void initState() {
     super.initState();
     _loadStreak();
   }
-  
+
   Future<void> _loadStreak() async {
     _streakService = await StreakService.init();
     await _streakService!.checkAndUpdateStreak();
     setState(() {
       _currentStreak = _streakService!.getCurrentStreak();
-      _longestStreak = _streakService!.getLongestStreak();
     });
   }
   
@@ -60,17 +58,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
       await _streakService!.recordCompletion();
       setState(() {
         _currentStreak = _streakService!.getCurrentStreak();
-        _longestStreak = _streakService!.getLongestStreak();
       });
     }
-  }
-  
-  String _getTimeBasedGreeting() {
-    final hour = DateTime.now().hour;
-    final name = widget.userName != null ? ', ${widget.userName}' : '';
-    if (hour < 12) return 'Good morning$name';
-    if (hour < 17) return 'Good afternoon$name';
-    return 'Good evening$name';
   }
   
   String _getIllustrationForProgress() {
@@ -784,19 +773,16 @@ class _SheetHandle extends StatelessWidget {
 class _AppField extends StatelessWidget {
   final TextEditingController ctrl;
   final String hint;
-  final int maxLines;
   final bool autofocus;
   const _AppField({
     required this.ctrl,
     required this.hint,
-    this.maxLines = 1,
     this.autofocus = false,
   });
 
   @override
   Widget build(BuildContext context) => TextField(
         controller: ctrl,
-        maxLines: maxLines,
         autofocus: autofocus,
         style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
         decoration: InputDecoration(
