@@ -223,14 +223,15 @@ class _TodoListScreenState extends State<TodoListScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🔥', style: TextStyle(fontSize: 14)),
+                        FloatingIcon(emoji: '🔥', size: 14),
                         const SizedBox(width: 5),
-                        Text(
-                          _currentStreak > 0 ? '$_currentStreak' : '0',
+                        AnimatedCounter(
+                          value: _currentStreak,
                           style: GoogleFonts.comfortaa(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: AppColors.ink),
+                          duration: const Duration(milliseconds: 600),
                         ),
                       ],
                     ),
@@ -244,14 +245,9 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   Widget _buildProgress() => Padding(
         padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(3),
-          child: LinearProgressIndicator(
-            value: _filteredTodos.isEmpty ? 0 : _completedTodos.length / _filteredTodos.length,
-            minHeight: 3,
-            backgroundColor: AppColors.border,
-            valueColor: const AlwaysStoppedAnimation(AppColors.ink),
-          ),
+        child: AnimatedProgressBar(
+          value: _filteredTodos.isEmpty ? 0 : _completedTodos.length / _filteredTodos.length,
+          height: 3,
         ),
       );
 
