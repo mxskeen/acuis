@@ -309,7 +309,7 @@ class _NavBarState extends State<_NavBar> with SingleTickerProviderStateMixin {
   static const _tabs = [
     _Tab(Icons.today_rounded, 'Today'),
     _Tab(Icons.outlined_flag_rounded, 'Goals'),
-    _Tab(Icons.check_box_outline_blank_rounded, 'Todos'),
+    _Tab(Icons.check_box_outline_blank_rounded, 'Steps'),
     _Tab(Icons.insights_rounded, 'Align'),
   ];
 

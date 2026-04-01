@@ -180,6 +180,243 @@ class _TodayViewState extends State<TodayView> {
     return 'Finish strong.';
   }
 
+  bool get _isNewUser => widget.goals.isEmpty && widget.todos.isEmpty;
+
+  Widget _buildNewUserTutorial() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Alignment Card for new users - clicking Start takes to Goals
+        GestureDetector(
+          onTap: widget.onNavigateToGoals,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.ink.withValues(alpha: 0.08),
+                  AppColors.surface,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.ink.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.insights_rounded, size: 24, color: AppColors.ink),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your Alignment',
+                            style: GoogleFonts.comfortaa(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'See how tasks connect to goals',
+                            style: GoogleFonts.comfortaa(
+                              fontSize: 12,
+                              color: AppColors.inkFaint,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.ink,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Start',
+                        style: GoogleFonts.comfortaa(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
+
+        // Tutorial header
+        Text(
+          'How Acuis Works',
+          style: GoogleFonts.comfortaa(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Turn your goals into actionable steps',
+          style: GoogleFonts.comfortaa(
+            fontSize: 13,
+            color: AppColors.inkLight,
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Step 1: Goals
+        _buildTutorialStep(
+          number: '1',
+          icon: Icons.flag_rounded,
+          title: 'Define Your Goals',
+          description: 'Start by adding what you want to achieve. Big or small, short-term or long-term — every goal matters.',
+          color: const Color(0xFF4CAF50),
+        ),
+        const SizedBox(height: 16),
+
+        // Step 2: Actionable Steps
+        _buildTutorialStep(
+          number: '2',
+          icon: Icons.psychology_rounded,
+          title: 'AI Generates Actionable Steps',
+          description: 'Acuis breaks down your goals into specific, doable steps. No more vague to-dos — each task has purpose.',
+          color: const Color(0xFF2196F3),
+        ),
+        const SizedBox(height: 16),
+
+        // Step 3: Alignment
+        _buildTutorialStep(
+          number: '3',
+          icon: Icons.insights_rounded,
+          title: 'Stay Aligned Daily',
+          description: 'See how every step connects to your bigger goals. Focus on what truly moves the needle.',
+          color: const Color(0xFF9C27B0),
+        ),
+        const SizedBox(height: 32),
+
+        // CTA Button
+        GestureDetector(
+          onTap: widget.onNavigateToGoals,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            decoration: BoxDecoration(
+              color: AppColors.ink,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Add Your First Goal',
+                    style: GoogleFonts.comfortaa(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTutorialStep({
+    required String number,
+    required IconData icon,
+    required String title,
+    required String description,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Number badge
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: GoogleFonts.comfortaa(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 16, color: color),
+                    const SizedBox(width: 6),
+                    Text(
+                      title,
+                      style: GoogleFonts.comfortaa(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: GoogleFonts.comfortaa(
+                    fontSize: 12,
+                    color: AppColors.inkLight,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pendingTodos = widget.todos.where((t) => !t.completed).toList();
@@ -205,26 +442,31 @@ class _TodayViewState extends State<TodayView> {
               _buildHeader(),
               const SizedBox(height: 24),
 
-              // Streak & Quick Stats
-              _buildStatsRow(completedToday),
-              const SizedBox(height: 20),
-
-              // Alignment Score Card (USP front and center)
-              _buildAlignmentCard(),
-              const SizedBox(height: 20),
-
-              // Focus Recommendation
-              if (pendingTodos.isNotEmpty) ...[
-                _buildFocusCard(),
+              // New user onboarding OR regular content
+              if (_isNewUser) ...[
+                _buildNewUserTutorial(),
+              ] else ...[
+                // Streak & Quick Stats
+                _buildStatsRow(completedToday),
                 const SizedBox(height: 20),
+
+                // Alignment Score Card (USP front and center)
+                _buildAlignmentCard(),
+                const SizedBox(height: 20),
+
+                // Focus Recommendation
+                if (pendingTodos.isNotEmpty) ...[
+                  _buildFocusCard(),
+                  const SizedBox(height: 20),
+                ],
+
+                // Today's Tasks
+                _buildTodayTasks(pendingTodos),
+                const SizedBox(height: 24),
+
+                // Quick Actions
+                _buildQuickActions(),
               ],
-
-              // Today's Tasks
-              _buildTodayTasks(pendingTodos),
-              const SizedBox(height: 24),
-
-              // Quick Actions
-              _buildQuickActions(),
             ],
           ),
         ),
@@ -323,7 +565,7 @@ class _TodayViewState extends State<TodayView> {
       children: [
         Expanded(
           child: _StatCard(
-            label: 'Tasks',
+            label: 'Steps',
             value: '$pendingTodos',
             icon: Icons.task_alt_rounded,
             color: AppColors.ink,
@@ -399,7 +641,7 @@ class _TodayViewState extends State<TodayView> {
                         ),
                       ),
                       Text(
-                        hasData ? 'Goals ↔️ Tasks match' : 'Add goals & tasks',
+                        hasData ? 'Goals ↔️ Steps match' : 'Add goals & steps',
                         style: GoogleFonts.comfortaa(
                           fontSize: 11,
                           color: AppColors.inkFaint,
@@ -510,7 +752,7 @@ class _TodayViewState extends State<TodayView> {
           ),
           const SizedBox(height: 12),
           Text(
-            _aiFocus ?? 'Focus on your most important task first.',
+            _aiFocus ?? 'Focus on your most important step first.',
             style: GoogleFonts.comfortaa(
               fontSize: 14,
               color: AppColors.ink,
@@ -532,7 +774,7 @@ class _TodayViewState extends State<TodayView> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Today\'s Tasks',
+              'Today\'s Steps',
               style: GoogleFonts.comfortaa(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -595,7 +837,7 @@ class _TodayViewState extends State<TodayView> {
           ),
           const SizedBox(height: 4),
           Text(
-            'No pending tasks for today',
+            'No pending steps for today',
             style: GoogleFonts.comfortaa(
               fontSize: 12,
               color: AppColors.inkFaint,
@@ -624,7 +866,7 @@ class _TodayViewState extends State<TodayView> {
             Expanded(
               child: _QuickActionCard(
                 icon: Icons.add_task_rounded,
-                label: 'Add Task',
+                label: 'Add Step',
                 onTap: widget.onNavigateToTodos,
               ),
             ),
