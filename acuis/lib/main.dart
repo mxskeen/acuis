@@ -9,6 +9,7 @@ import 'models/goal.dart';
 import 'models/todo.dart';
 import 'shared/services/storage_service.dart';
 import 'shared/services/alignment_refresh_service.dart';
+import 'shared/services/xp_tracking_service.dart';
 import 'splash_screen.dart';
 
 void main() async {
@@ -104,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final PageController _pageCtrl;
   final _storage = StorageService();
   final _refreshService = AlignmentRefreshService();
+  final _xpTrackingService = XPTrackingService.init();
   String? _userName;
 
   @override
@@ -206,7 +208,8 @@ class _HomeScreenState extends State<HomeScreen> {
               _saveData();
               _refreshService.onTodosChanged();
             },
-            onToggle: (i) {
+            onToggle: (i) async {
+              final wasCompleted = todos[i].completed;
               setState(() {
                 final updated = [...todos];
                 updated[i] = updated[i].copyWith(completed: !updated[i].completed);
@@ -214,6 +217,13 @@ class _HomeScreenState extends State<HomeScreen> {
               });
               _saveData();
               _refreshService.onTodosChanged();
+
+              // If uncompleting a todo, remove it from XP rewarded list
+              // so it can be rewarded again if re-completed
+              if (wasCompleted) {
+                final xpService = await _xpTrackingService;
+                await xpService.unmarkTodoAsRewarded(todos[i].id);
+              }
             },
             onEdit: (index, t) {
               setState(() => todos = [...todos]..[index] = t);
@@ -233,6 +243,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onDataChanged: (updatedTodos) {
               setState(() => todos = updatedTodos);
               _saveData();
+            },
+            onAddTodo: (t) {
+              setState(() => todos = [...todos, t]);
+              _saveData();
+              _refreshService.onTodosChanged();
             },
           ),
         ],
