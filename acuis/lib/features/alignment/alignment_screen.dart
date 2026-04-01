@@ -49,12 +49,13 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   final _storage = StorageService();
   bool _isAnalyzing = false;
   String _apiKey = '';
-  late VelocityService _velocityService;
-  late GamificationService _gamificationService;
-  late StreakService _streakService;
+  VelocityService? _velocityService;
+  GamificationService? _gamificationService;
+  StreakService? _streakService;
   late NudgeService _nudgeService;
-  late XPTrackingService _xpTrackingService;
+  XPTrackingService? _xpTrackingService;
   int _lastRefreshVersion = 0;
+  bool _servicesInitialized = false;
 
   @override
   void initState() {
@@ -63,7 +64,6 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     _nudgeService = NudgeService();
     _initServices();
     widget.refreshService.addListener(_onRefreshTriggered);
-    _updateNudges();
   }
 
   @override
@@ -74,6 +74,8 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   }
 
   void _updateNudges() {
+    if (!_servicesInitialized) return;
+
     // Update unanalyzed todos count
     final linkedTodos = widget.todos.where((t) => t.goalId != null).toList();
     final unanalyzedCount = linkedTodos.where((t) => t.alignmentScore == null).length;
@@ -88,7 +90,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
              t.createdAt.day == today.day;
     }).length;
 
-    final currentStreak = _streakService.getCurrentStreak();
+    final currentStreak = _streakService!.getCurrentStreak();
     _nudgeService.checkStreakRisk(completedToday == 0 && currentStreak > 0, currentStreak);
 
     // Update time-based nudges
@@ -122,11 +124,16 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     _xpTrackingService = await XPTrackingService.init();
 
     // Clean up deleted todos from XP tracking
-    await _xpTrackingService.cleanupDeletedTodos(
+    await _xpTrackingService!.cleanupDeletedTodos(
       widget.todos.map((t) => t.id).toList(),
     );
 
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        _servicesInitialized = true;
+      });
+      _updateNudges();
+    }
   }
 
   Future<void> _analyze({bool autoRefresh = false}) async {
@@ -143,13 +150,13 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
       final service = AIAlignmentService(apiKey: _apiKey);
 
       // Build context with velocity data
-      final velocity = _velocityService.getVelocity(7);
+      final velocity = _velocityService!.getVelocity(7);
       final context = ScoringContext(
         velocity: velocity,
         daysUntilTarget: widget.goals.isNotEmpty
             ? widget.goals.first.daysRemaining
             : 30,
-        currentStreak: _streakService.getCurrentStreak(),
+        currentStreak: _streakService!.getCurrentStreak(),
       );
 
       final results = await service.analyzeAll(widget.todos, widget.goals, context: context);
@@ -180,7 +187,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
       }
 
       // Record velocity snapshot
-      await _velocityService.recordDaySnapshot(updatedTodos);
+      await _velocityService!.recordDaySnapshot(updatedTodos);
     } catch (e) {
       // Only show error on manual refresh
       if (mounted && !autoRefresh) {
@@ -194,25 +201,27 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   }
 
   void _checkCelebrations(List<Todo> todos) {
+    if (!_servicesInitialized) return;
+
     // Check for high alignment completions
     for (final todo in todos.where((t) => t.completed)) {
       // Skip if this todo has already been rewarded
-      if (_xpTrackingService.hasBeenRewarded(todo.id)) continue;
+      if (_xpTrackingService!.hasBeenRewarded(todo.id)) continue;
 
       final goal = widget.goals.firstWhere(
         (g) => g.id == todo.goalId,
         orElse: () => widget.goals.first,
       );
 
-      final celebration = _gamificationService.checkCelebration(todo, goal);
+      final celebration = _gamificationService!.checkCelebration(todo, goal);
       if (celebration != null) {
         showCelebration(context, celebration);
 
         // Mark as rewarded before adding points to prevent duplicates
-        _xpTrackingService.markTodoAsRewarded(todo.id);
+        _xpTrackingService!.markTodoAsRewarded(todo.id);
 
         // Add points
-        final levelUp = _gamificationService.addPoints(celebration.points);
+        final levelUp = _gamificationService!.addPoints(celebration.points);
         if (levelUp != null) {
           // Show level up after celebration
           Future.delayed(const Duration(seconds: 3), () {
@@ -229,7 +238,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     }
 
     // Check for achievements
-    final newAchievements = _gamificationService.checkAchievements(widget.goals, todos);
+    final newAchievements = _gamificationService!.checkAchievements(widget.goals, todos);
     if (newAchievements.isNotEmpty) {
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
@@ -291,9 +300,11 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                     const SizedBox(height: 24),
 
                     // Streak & Level card
-                    _buildStreakLevelCard(),
+                    if (_servicesInitialized)
+                      _buildStreakLevelCard(),
 
-                    const SizedBox(height: 24),
+                    if (_servicesInitialized)
+                      const SizedBox(height: 24),
 
                     // Weekly Retrospective
                     WeeklyRetrospective(
@@ -309,23 +320,27 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                     const SizedBox(height: 24),
 
                     // Velocity Insights
-                    widgets.VelocityInsights(
-                      todos: widget.todos,
-                      velocityService: _velocityService,
-                    ),
+                    if (_servicesInitialized)
+                      widgets.VelocityInsights(
+                        todos: widget.todos,
+                        velocityService: _velocityService!,
+                      ),
 
-                    const SizedBox(height: 24),
+                    if (_servicesInitialized)
+                      const SizedBox(height: 24),
 
                     // Smart Recommendations
-                    RecommendationsWidget(
-                      todos: widget.todos,
-                      goals: widget.goals,
-                      currentStreak: _streakService.getCurrentStreak(),
-                      currentVelocity: _velocityService.getVelocity(7),
-                      previousVelocity: _velocityService.getVelocity(14) - _velocityService.getVelocity(7),
-                    ),
+                    if (_servicesInitialized)
+                      RecommendationsWidget(
+                        todos: widget.todos,
+                        goals: widget.goals,
+                        currentStreak: _streakService!.getCurrentStreak(),
+                        currentVelocity: _velocityService!.getVelocity(7),
+                        previousVelocity: _velocityService!.getVelocity(14) - _velocityService!.getVelocity(7),
+                      ),
 
-                    const SizedBox(height: 24),
+                    if (_servicesInitialized)
+                      const SizedBox(height: 24),
 
                     // Eisenhower Quadrant (replaces Impact Quadrant)
                     EisenhowerQuadrant(
@@ -355,14 +370,15 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                             fontSize: 12, color: AppColors.inkFaint)),
                     const SizedBox(height: 12),
 
-                    ...widget.goals.map((goal) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: ScienceBackedGrowthChart(
-                        goal: goal,
-                        todos: widget.todos,
-                        velocityService: _velocityService,
-                      ),
-                    )),
+                    if (_servicesInitialized)
+                      ...widget.goals.map((goal) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: ScienceBackedGrowthChart(
+                          goal: goal,
+                          todos: widget.todos,
+                          velocityService: _velocityService!,
+                        ),
+                      )),
 
                     const SizedBox(height: 24),
 
@@ -379,7 +395,8 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                             fontWeight: FontWeight.w700,
                             color: AppColors.ink)),
                     const SizedBox(height: 12),
-                    ...widget.goals.map(_buildGoalStatsCard),
+                    if (_servicesInitialized)
+                      ...widget.goals.map(_buildGoalStatsCard),
                   ],
                 ),
               ),
@@ -463,8 +480,8 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     Color bgColor = const Color(0xFFFFF3E0);
     Color textColor = const Color(0xFFE65100);
 
-    if (_nudgeService.streakAtRisk) {
-      final streak = _streakService.getCurrentStreak();
+    if (_nudgeService.streakAtRisk && _servicesInitialized) {
+      final streak = _streakService!.getCurrentStreak();
       message = 'Don\'t break your $streak-day streak! Complete 1 todo to keep it alive 🔥';
       icon = Icons.local_fire_department_outlined;
       bgColor = const Color(0xFFFFEBEE);
@@ -638,11 +655,11 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   }
 
   Widget _buildStreakLevelCard() {
-    final streak = _streakService.getCurrentStreak();
-    final longestStreak = _streakService.getLongestStreak();
-    final level = _gamificationService.getLevel();
-    final points = _gamificationService.getTotalPoints();
-    final levelProgress = _gamificationService.getLevelProgress();
+    final streak = _streakService!.getCurrentStreak();
+    final longestStreak = _streakService!.getLongestStreak();
+    final level = _gamificationService!.getLevel();
+    final points = _gamificationService!.getTotalPoints();
+    final levelProgress = _gamificationService!.getLevelProgress();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -883,8 +900,8 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
     }
 
     // Get velocity prediction
-    final prediction = _velocityService.predictCompletion(goal, goalTodos);
-    final status = _velocityService.getGoalProgressStatus(goal, goalTodos);
+    final prediction = _velocityService!.predictCompletion(goal, goalTodos);
+    final status = _velocityService!.getGoalProgressStatus(goal, goalTodos);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

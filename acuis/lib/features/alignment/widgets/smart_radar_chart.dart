@@ -212,7 +212,7 @@ class _RadarChartPainter extends CustomPainter {
 
     // Draw filled polygon
     final fillPaint = Paint()
-      ..color = color.withOpacity(0.15)
+      ..color = color.withValues(alpha: 0.15)
       ..style = PaintingStyle.fill;
 
     final fillPath = Path()..addPolygon(points, true);
@@ -294,7 +294,7 @@ class SMARTIndicator extends StatelessWidget {
                       alignment: Alignment.bottomLeft,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.3),
+                          color: color.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),

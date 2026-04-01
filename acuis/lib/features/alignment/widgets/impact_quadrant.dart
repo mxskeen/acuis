@@ -111,7 +111,7 @@ class _QuadrantPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final axisPaint = Paint()
-      ..color = AppColors.inkFaint.withOpacity(0.5)
+      ..color = AppColors.inkFaint.withValues(alpha: 0.5)
       ..strokeWidth = 1.0
       ..strokeCap = StrokeCap.round;
 

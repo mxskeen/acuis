@@ -5,7 +5,6 @@ import '../../main.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
 import '../../shared/services/ai_task_generator_service.dart';
-import '../../models/smart_scores.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
