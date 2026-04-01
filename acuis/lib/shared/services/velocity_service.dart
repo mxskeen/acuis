@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/todo.dart';
 import '../../models/goal.dart';
 import '../../models/velocity_prediction.dart';
-import '../../models/smart_scores.dart';
 
 /// Velocity Tracking Service
 ///

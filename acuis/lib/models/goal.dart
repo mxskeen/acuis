@@ -83,9 +83,13 @@ class Goal {
   /// Calculate urgency score for prioritization
   int get urgencyScore {
     int score = 0;
-    if (isOverdue) score += 40;
-    else if (isApproachingDeadline) score += 30;
-    else if (daysRemaining > 0 && daysRemaining <= 14) score += 20;
+    if (isOverdue) {
+      score += 40;
+    } else if (isApproachingDeadline) {
+      score += 30;
+    } else if (daysRemaining > 0 && daysRemaining <= 14) {
+      score += 20;
+    }
 
     score += (commitmentLevel ?? 5) * 5;
     return score.clamp(0, 100);
