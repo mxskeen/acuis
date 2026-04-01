@@ -50,14 +50,6 @@ class _GoalListScreenState extends State<GoalListScreen> {
     });
   }
   
-  String _getTimeBasedGreeting() {
-    final hour = DateTime.now().hour;
-    final name = widget.userName != null ? ', ${widget.userName}' : '';
-    if (hour < 12) return 'Good morning$name';
-    if (hour < 17) return 'Good afternoon$name';
-    return 'Good evening$name';
-  }
-  
   String _getIllustrationForGoals() {
     if (goals.isEmpty) return 'assets/illustrations/girl-with-plant.svg';
     if (goals.length >= 5) return 'assets/illustrations/tea-lover.svg'; // 5+ goals - Taking time to plan
@@ -185,12 +177,6 @@ class _GoalListScreenState extends State<GoalListScreen> {
                     ),
                   ],
                 ),
-                if (goals.isNotEmpty)
-                  Text(_getTimeBasedGreeting(),
-                      style: GoogleFonts.comfortaa(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.inkLight)),
                 GestureDetector(
                   onTap: () {
                     if (_streakService != null) {
@@ -567,7 +553,7 @@ class _GoalCard extends StatelessWidget {
                   children: [
                     const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
                     const SizedBox(width: 6),
-                    Text('Generate Tasks',
+                    Text('Generate Steps',
                         style: GoogleFonts.comfortaa(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -790,7 +776,7 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
             ),
             const SizedBox(height: 20),
             Text(
-              '$_tasksAdded tasks added!',
+              '$_tasksAdded steps added!',
               style: GoogleFonts.comfortaa(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -823,7 +809,7 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
               // Navigate to todos tab (index 2 now)
               // This is handled by the parent
             },
-            child: Text('View Tasks',
+            child: Text('View Steps',
                 style: GoogleFonts.comfortaa(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -836,7 +822,7 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('AI Task Generation',
+      title: Text('AI Step Generation',
           style: GoogleFonts.comfortaa(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -847,7 +833,7 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
               children: [
                 const CircularProgressIndicator(color: AppColors.ink),
                 const SizedBox(height: 16),
-                Text('Generating actionable tasks...',
+                Text('Generating actionable steps...',
                     style: GoogleFonts.comfortaa(
                         fontSize: 13, color: AppColors.inkLight)),
               ],
@@ -878,7 +864,7 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                       children: [
                         const Icon(Icons.edit_outlined, size: 14, color: AppColors.inkFaint),
                         const SizedBox(width: 6),
-                        Text('Tap to edit any task before adding',
+                        Text('Tap to edit any step before adding',
                             style: GoogleFonts.comfortaa(
                                 fontSize: 11, color: AppColors.inkFaint)),
                       ],
