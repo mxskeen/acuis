@@ -191,7 +191,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Todos',
+                    Text('Actionable Steps',
                         style: GoogleFonts.comfortaa(
                             fontSize: 26,
                             fontWeight: FontWeight.w700,
@@ -200,7 +200,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                     const SizedBox(height: 3),
                     Text(
                       _filteredTodos.isEmpty
-                          ? 'What needs doing today?'
+                          ? 'Break down your goals'
                           : '${_completedTodos.length} of ${_filteredTodos.length} done',
                       style: GoogleFonts.comfortaa(
                           fontSize: 12, color: AppColors.inkLight),
@@ -313,7 +313,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                     fontWeight: FontWeight.w700,
                     color: AppColors.inkLight)),
             const SizedBox(height: 4),
-            Text('Your tasks will appear here',
+            Text('Your actionable steps will appear here',
                 style: GoogleFonts.comfortaa(
                     fontSize: 12, color: AppColors.inkFaint)),
             const SizedBox(height: 24),
@@ -325,7 +325,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                   color: AppColors.ink,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text('Add new task',
+                child: Text('Add new step',
                     style: GoogleFonts.comfortaa(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -429,7 +429,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
             children: [
               Center(child: _SheetHandle()),
               const SizedBox(height: 22),
-              Text('New todo',
+              Text('New step',
                   style: GoogleFonts.comfortaa(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -437,7 +437,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
               const SizedBox(height: 20),
               _AppField(
                   ctrl: titleCtrl,
-                  hint: 'What needs to be done?',
+                  hint: 'What action will you take?',
                   autofocus: true),
               if (widget.goals.isNotEmpty) ...[
                 const SizedBox(height: 10),
@@ -468,7 +468,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
               ],
               const SizedBox(height: 24),
               _PrimaryButton(
-                label: 'Add todo',
+                label: 'Add step',
                 onTap: () {
                   if (titleCtrl.text.trim().isNotEmpty) {
                     widget.onAdd(Todo(
@@ -512,7 +512,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
             children: [
               Center(child: _SheetHandle()),
               const SizedBox(height: 22),
-              Text('Edit todo',
+              Text('Edit step',
                   style: GoogleFonts.comfortaa(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -520,7 +520,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
               const SizedBox(height: 20),
               _AppField(
                   ctrl: titleCtrl,
-                  hint: 'What needs to be done?',
+                  hint: 'What action will you take?',
                   autofocus: true),
               if (widget.goals.isNotEmpty) ...[
                 const SizedBox(height: 10),
@@ -585,7 +585,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Delete todo?',
+        title: Text('Delete step?',
             style: GoogleFonts.comfortaa(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -816,7 +816,7 @@ class _ReasonSheetState extends State<_ReasonSheet> {
             children: [
               const Icon(Icons.description_outlined, size: 18, color: AppColors.ink),
               const SizedBox(width: 8),
-              Text('Why this task?',
+              Text('Why this step?',
                   style: GoogleFonts.comfortaa(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -946,7 +946,7 @@ class _DeleteButton extends StatelessWidget {
             border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
           ),
           child: Center(
-            child: Text('Delete todo',
+            child: Text('Delete step',
                 style: GoogleFonts.comfortaa(
                     color: Colors.red,
                     fontWeight: FontWeight.w700,

@@ -495,7 +495,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
       bgColor = const Color(0xFFFFEBEE);
       textColor = const Color(0xFFC62828);
     } else if (_nudgeService.unanalyzedTodosCount > 0) {
-      message = 'You have ${_nudgeService.unanalyzedTodosCount} unanalyzed todos. Tap refresh to analyze.';
+      message = 'You have ${_nudgeService.unanalyzedTodosCount} unanalyzed steps. Tap refresh to analyze.';
       icon = Icons.analytics_outlined;
     }
 
@@ -542,7 +542,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
                     color: AppColors.inkLight,
                   )),
               const SizedBox(height: 4),
-              Text('Add goals and link todos to see alignment',
+              Text('Add goals and link steps to see alignment',
                   style: GoogleFonts.comfortaa(
                       fontSize: 12, color: AppColors.inkFaint)),
             ],
