@@ -9,6 +9,7 @@ import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
 import '../../shared/widgets/tiny_habits_prompt.dart';
+import '../../shared/widgets/ambient_animations.dart';
 
 class TodoListScreen extends StatefulWidget {
   final List<Goal> goals;
