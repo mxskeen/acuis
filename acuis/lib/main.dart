@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'features/today/today_view.dart';
 import 'features/goals/goal_list_screen.dart';
 import 'features/todos/todo_list_screen.dart';
 import 'features/alignment/alignment_screen.dart';
@@ -121,11 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onPageChanged(int i) {
-    final wasOnAlignment = _idx == 2;
+    final wasOnAlignment = _idx == 3;
     setState(() => _idx = i);
 
     // Notify refresh service about screen visibility
-    if (i == 2) {
+    if (i == 3) {
       // Alignment screen is visible
       _refreshService.onScreenVisible();
     } else if (wasOnAlignment) {
@@ -176,6 +177,35 @@ class _HomeScreenState extends State<HomeScreen> {
         onPageChanged: _onPageChanged,
         physics: const BouncingScrollPhysics(),
         children: [
+          // Today - The daily command center (NEW FIRST TAB)
+          TodayView(
+            goals: goals,
+            todos: todos,
+            userName: _userName,
+            onNavigateToGoals: () => _onTabTap(1),
+            onNavigateToTodos: () => _onTabTap(2),
+            onNavigateToAlignment: () => _onTabTap(3),
+            onAddTodo: (t) {
+              setState(() => todos = [...todos, t]);
+              _saveData();
+              _refreshService.onTodosChanged();
+            },
+            onToggleTodo: (i) async {
+              final wasCompleted = todos[i].completed;
+              setState(() {
+                final updated = [...todos];
+                updated[i] = updated[i].copyWith(completed: !updated[i].completed);
+                todos = updated;
+              });
+              _saveData();
+              _refreshService.onTodosChanged();
+              if (wasCompleted) {
+                final xpService = await _xpTrackingService;
+                await xpService.unmarkTodoAsRewarded(todos[i].id);
+              }
+            },
+          ),
+          // Goals
           GoalListScreen(
             goals: goals,
             userName: _userName,
@@ -200,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _refreshService.onTodosChanged();
             },
           ),
+          // Todos
           TodoListScreen(
             goals: goals,
             todos: todos,
@@ -218,9 +249,6 @@ class _HomeScreenState extends State<HomeScreen> {
               });
               _saveData();
               _refreshService.onTodosChanged();
-
-              // If uncompleting a todo, remove it from XP rewarded list
-              // so it can be rewarded again if re-completed
               if (wasCompleted) {
                 final xpService = await _xpTrackingService;
                 await xpService.unmarkTodoAsRewarded(todos[i].id);
@@ -237,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _refreshService.onTodosChanged();
             },
           ),
+          // Alignment (USP)
           AlignmentScreen(
             goals: goals,
             todos: todos,
@@ -278,9 +307,10 @@ class _NavBarState extends State<_NavBar> with SingleTickerProviderStateMixin {
   late final Animation<double> _curve;
 
   static const _tabs = [
+    _Tab(Icons.today_rounded, 'Today'),
     _Tab(Icons.outlined_flag_rounded, 'Goals'),
     _Tab(Icons.check_box_outline_blank_rounded, 'Todos'),
-    _Tab(Icons.bar_chart_rounded, 'Align'),
+    _Tab(Icons.insights_rounded, 'Align'),
   ];
 
   @override
