@@ -8,6 +8,7 @@ import '../../shared/services/ai_task_generator_service.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
+import '../../shared/widgets/tiny_habits_prompt.dart';
 
 class TodoListScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -291,8 +292,22 @@ class _TodoListScreenState extends State<TodoListScreen> {
           todo: todos[i],
           goals: widget.goals,
           onToggle: () {
+            final wasCompleted = todos[i].completed;
             widget.onToggle(i);
             _checkStreakUpdate();
+
+            // Show tiny habits prompt when completing a todo (not uncompleting)
+            if (!wasCompleted && todos[i].completed) {
+              Future.delayed(const Duration(milliseconds: 300), () {
+                if (mounted) {
+                  showTinyHabitsPrompt(
+                    context,
+                    onAddAnother: () => _showSheet(),
+                    onDone: () {},
+                  );
+                }
+              });
+            }
           },
           onLongPress: () => _showEditSheet(i),
         ),
