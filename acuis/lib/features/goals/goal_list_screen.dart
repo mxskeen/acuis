@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../main.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
-import '../../shared/services/ai_task_generator_service.dart';
+import '../../shared/services/smart_todo_generator_service.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
@@ -16,6 +16,7 @@ class GoalListScreen extends StatefulWidget {
   final void Function(int, Goal) onEdit;
   final void Function(int) onDelete;
   final void Function(List<Todo>) onAddTodos;
+  final List<Todo> todos;
   const GoalListScreen({
     super.key,
     required this.goals,
@@ -24,6 +25,7 @@ class GoalListScreen extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onAddTodos,
+    this.todos = const [],
   });
   @override
   State<GoalListScreen> createState() => _GoalListScreenState();
@@ -60,17 +62,21 @@ class _GoalListScreenState extends State<GoalListScreen> {
   Future<void> _showGenerateTasksDialog(int goalIndex) async {
     final goal = goals[goalIndex];
     final apiKey = _storage.loadApiKeySync() ?? '';
-    
+
     if (apiKey.isEmpty) {
       _showApiKeyRequiredDialog();
       return;
     }
-    
+
+    // Get existing todos for this goal
+    final existingTodos = widget.todos.where((t) => t.goalId == goal.id).toList();
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _GenerateTasksDialog(
+      builder: (ctx) => _SmartGenerateTasksDialog(
         goal: goal,
+        existingTodos: existingTodos,
         apiKey: apiKey,
         onTasksGenerated: (todos) {
           widget.onAddTodos(todos);
@@ -669,30 +675,34 @@ class _DeleteButton extends StatelessWidget {
       );
 }
 
-// ── Generate Tasks Dialog ──────────────────────────────────
+// ── Smart Generate Tasks Dialog (uses tool-calling LLM) ───────────
 
-class _GenerateTasksDialog extends StatefulWidget {
+class _SmartGenerateTasksDialog extends StatefulWidget {
   final Goal goal;
+  final List<Todo> existingTodos;
   final String apiKey;
   final void Function(List<Todo>) onTasksGenerated;
 
-  const _GenerateTasksDialog({
+  const _SmartGenerateTasksDialog({
     required this.goal,
+    required this.existingTodos,
     required this.apiKey,
     required this.onTasksGenerated,
   });
 
   @override
-  State<_GenerateTasksDialog> createState() => _GenerateTasksDialogState();
+  State<_SmartGenerateTasksDialog> createState() => _SmartGenerateTasksDialogState();
 }
 
-class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
+class _SmartGenerateTasksDialogState extends State<_SmartGenerateTasksDialog> {
   bool _isGenerating = true;
   bool _success = false;
   int _tasksAdded = 0;
-  List<GeneratedTask>? _tasks;
+  List<Todo>? _generatedTodos;
   List<TextEditingController> _controllers = [];
   String? _error;
+  String? _progressAssessment;
+  String? _phase;
 
   @override
   void initState() {
@@ -710,12 +720,19 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
 
   Future<void> _generateTasks() async {
     try {
-      final service = AITaskGeneratorService(apiKey: widget.apiKey);
-      final tasks = await service.generateTasks(widget.goal, maxTasks: 5);
+      final service = SmartTodoGeneratorService(apiKey: widget.apiKey);
+      final result = await service.generateTodos(
+        goal: widget.goal,
+        existingTodos: widget.existingTodos,
+        maxTodos: 5,
+      );
+
       if (mounted) {
         setState(() {
-          _tasks = tasks;
-          _controllers = tasks.map((t) => TextEditingController(text: t.title)).toList();
+          _generatedTodos = result.todos;
+          _controllers = result.todos.map((t) => TextEditingController(text: t.title)).toList();
+          _progressAssessment = result.progressAssessment;
+          _phase = result.phase;
           _isGenerating = false;
         });
       }
@@ -730,29 +747,19 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
   }
 
   void _addTasks() {
-    // Create updated tasks with edited titles
-    final editedTasks = <GeneratedTask>[];
-    for (int i = 0; i < (_tasks?.length ?? 0); i++) {
-      final original = _tasks![i];
+    final editedTodos = <Todo>[];
+    for (int i = 0; i < (_generatedTodos?.length ?? 0); i++) {
+      final original = _generatedTodos![i];
       final editedTitle = _controllers[i].text.trim();
       if (editedTitle.isNotEmpty) {
-        editedTasks.add(GeneratedTask(
-          title: editedTitle,
-          effort: original.effort,
-          eisenhowerClass: original.eisenhowerClass,
-          smartScores: original.smartScores,
-          reason: original.reason,
-          bestTime: original.bestTime,
-          estimatedMinutes: original.estimatedMinutes,
-        ));
+        editedTodos.add(original.copyWith(title: editedTitle));
       }
     }
-    final service = AITaskGeneratorService(apiKey: widget.apiKey);
-    final todos = service.createTodosFromTasks(editedTasks, widget.goal.id);
-    widget.onTasksGenerated(todos);
+
+    widget.onTasksGenerated(editedTodos);
     setState(() {
       _success = true;
-      _tasksAdded = todos.length;
+      _tasksAdded = editedTodos.length;
     });
   }
 
@@ -806,8 +813,6 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // Navigate to todos tab (index 2 now)
-              // This is handled by the parent
             },
             child: Text('View Steps',
                 style: GoogleFonts.comfortaa(
@@ -822,18 +827,24 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('AI Step Generation',
-          style: GoogleFonts.comfortaa(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink)),
+      title: Row(
+        children: [
+          const Icon(Icons.auto_awesome, size: 20, color: AppColors.ink),
+          const SizedBox(width: 8),
+          Text('Smart Steps',
+              style: GoogleFonts.comfortaa(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink)),
+        ],
+      ),
       content: _isGenerating
           ? Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const CircularProgressIndicator(color: AppColors.ink),
                 const SizedBox(height: 16),
-                Text('Generating actionable steps...',
+                Text('Analyzing your progress...',
                     style: GoogleFonts.comfortaa(
                         fontSize: 13, color: AppColors.inkLight)),
               ],
@@ -860,6 +871,33 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Progress assessment
+                    if (_progressAssessment != null && _progressAssessment!.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(_getPhaseIcon(), size: 18, color: _getPhaseColor()),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _progressAssessment!,
+                                style: GoogleFonts.comfortaa(
+                                  fontSize: 12,
+                                  color: AppColors.inkLight,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     Row(
                       children: [
                         const Icon(Icons.edit_outlined, size: 14, color: AppColors.inkFaint),
@@ -910,6 +948,26 @@ class _GenerateTasksDialogState extends State<_GenerateTasksDialog> {
                   ),
                 ],
     );
+  }
+
+  IconData _getPhaseIcon() {
+    return switch (_phase) {
+      'starting' => Icons.rocket_launch_rounded,
+      'building' => Icons.trending_up_rounded,
+      'advancing' => Icons.bolt_rounded,
+      'finishing' => Icons.flag_rounded,
+      _ => Icons.auto_awesome,
+    };
+  }
+
+  Color _getPhaseColor() {
+    return switch (_phase) {
+      'starting' => const Color(0xFF42A5F5),
+      'building' => const Color(0xFF66BB6A),
+      'advancing' => const Color(0xFFFFA726),
+      'finishing' => const Color(0xFFEF5350),
+      _ => AppColors.ink,
+    };
   }
 }
 

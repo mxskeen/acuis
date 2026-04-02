@@ -11,6 +11,7 @@ import 'models/todo.dart';
 import 'shared/services/storage_service.dart';
 import 'shared/services/alignment_refresh_service.dart';
 import 'shared/services/xp_tracking_service.dart';
+import 'shared/services/daily_todo_scheduler.dart';
 import 'splash_screen.dart';
 
 void main() async {
@@ -107,7 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final _storage = StorageService();
   final _refreshService = AlignmentRefreshService();
   final _xpTrackingService = XPTrackingService.init();
+  final _todoScheduler = DailyTodoScheduler();
   String? _userName;
+  bool _autoGenerationInProgress = false;
 
   @override
   void initState() {
@@ -118,6 +121,40 @@ class _HomeScreenState extends State<HomeScreen> {
     _userName = _storage.loadUserNameSync();
     if (_userName == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showNameDialog());
+    }
+    // Auto-generate todos on app launch if needed
+    _runAutoGeneration();
+  }
+
+  /// Auto-generate todos for goals that need them
+  Future<void> _runAutoGeneration() async {
+    if (_autoGenerationInProgress) return;
+
+    final apiKey = _storage.loadApiKeySync();
+    if (apiKey == null || apiKey.isEmpty) return;
+
+    final activeGoals = goals.where((g) => g.status == GoalStatus.active).toList();
+    if (activeGoals.isEmpty) return;
+
+    _autoGenerationInProgress = true;
+
+    try {
+      final result = await _todoScheduler.autoGenerateIfNeeded(
+        goals: goals,
+        todos: todos,
+        apiKey: apiKey,
+        maxTodosPerGoal: 3,
+      );
+
+      if (result.generated && result.newTodos.isNotEmpty) {
+        setState(() {
+          todos = [...todos, ...result.newTodos];
+        });
+        _saveData();
+        _refreshService.onTodosChanged();
+      }
+    } finally {
+      _autoGenerationInProgress = false;
     }
   }
 
@@ -208,11 +245,30 @@ class _HomeScreenState extends State<HomeScreen> {
           // Goals
           GoalListScreen(
             goals: goals,
+            todos: todos,
             userName: _userName,
-            onAdd: (g) {
+            onAdd: (g) async {
               setState(() => goals = [...goals, g]);
               _saveData();
               _refreshService.onGoalsChanged();
+
+              // Auto-generate todos for new goal
+              final apiKey = _storage.loadApiKeySync();
+              if (apiKey != null && apiKey.isNotEmpty) {
+                final result = await _todoScheduler.generateForNewGoal(
+                  goal: g,
+                  apiKey: apiKey,
+                  maxTodos: 5,
+                );
+
+                if (result.success && result.generatedTodos.isNotEmpty) {
+                  setState(() {
+                    todos = [...todos, ...result.generatedTodos];
+                  });
+                  _saveData();
+                  _refreshService.onTodosChanged();
+                }
+              }
             },
             onEdit: (index, g) {
               setState(() => goals = [...goals]..[index] = g);
