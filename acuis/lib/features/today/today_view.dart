@@ -45,17 +45,36 @@ class TodayView extends StatefulWidget {
   State<TodayView> createState() => _TodayViewState();
 }
 
-class _TodayViewState extends State<TodayView> {
+class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixin {
   StreakService? _streakService;
   String? _aiFocus;
   bool _loadingFocus = true;
+  bool _initialized = false;
   int _currentStreak = 0;
   double _alignmentScore = 0;
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
+    _initServicesOnce();
+  }
+
+  void _initServicesOnce() {
+    if (_initialized) return;
+    _initialized = true;
     _initServices();
+  }
+
+  @override
+  void didUpdateWidget(covariant TodayView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Recalculate alignment when todos change, but don't re-fetch AI
+    if (oldWidget.todos != widget.todos) {
+      _calculateAlignment();
+    }
   }
 
   Future<void> _initServices() async {
@@ -419,6 +438,7 @@ class _TodayViewState extends State<TodayView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final pendingTodos = widget.todos.where((t) => !t.completed).toList();
     final completedToday = widget.todos.where((t) {
       if (!t.completed || t.completedAt == null) return false;

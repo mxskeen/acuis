@@ -37,25 +37,37 @@ class GoalListScreen extends StatefulWidget {
   State<GoalListScreen> createState() => _GoalListScreenState();
 }
 
-class _GoalListScreenState extends State<GoalListScreen> {
+class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAliveClientMixin {
   List<Goal> get goals => widget.goals;
   final _storage = StorageService();
   StreakService? _streakService;
   int _currentStreak = 0;
+  bool _initialized = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _initOnce();
+  }
+
+  void _initOnce() {
+    if (_initialized) return;
+    _initialized = true;
     _loadStreak();
   }
 
   Future<void> _loadStreak() async {
     final service = await StreakService.init();
     await service.checkAndUpdateStreak();
-    setState(() {
-      _streakService = service;
-      _currentStreak = service.getCurrentStreak();
-    });
+    if (mounted) {
+      setState(() {
+        _streakService = service;
+        _currentStreak = service.getCurrentStreak();
+      });
+    }
   }
   
   String _getIllustrationForGoals() {
@@ -122,6 +134,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: AppColors.bg,
       floatingActionButton: goals.isNotEmpty ? Padding(

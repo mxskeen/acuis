@@ -33,11 +33,15 @@ class TodoListScreen extends StatefulWidget {
   State<TodoListScreen> createState() => _TodoListScreenState();
 }
 
-class _TodoListScreenState extends State<TodoListScreen> {
+class _TodoListScreenState extends State<TodoListScreen> with AutomaticKeepAliveClientMixin {
   List<Todo> get todos => widget.todos;
   StreakService? _streakService;
   int _currentStreak = 0;
   String? _selectedGoalId; // null means "All Goals"
+  bool _initialized = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   /// Todos filtered by selected goal
   List<Todo> get _filteredTodos {
@@ -54,15 +58,23 @@ class _TodoListScreenState extends State<TodoListScreen> {
   @override
   void initState() {
     super.initState();
+    _initOnce();
+  }
+
+  void _initOnce() {
+    if (_initialized) return;
+    _initialized = true;
     _loadStreak();
   }
 
   Future<void> _loadStreak() async {
     _streakService = await StreakService.init();
     await _streakService!.checkAndUpdateStreak();
-    setState(() {
-      _currentStreak = _streakService!.getCurrentStreak();
-    });
+    if (mounted) {
+      setState(() {
+        _currentStreak = _streakService!.getCurrentStreak();
+      });
+    }
   }
   
   Future<void> _checkStreakUpdate() async {
@@ -87,6 +99,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: AppColors.bg,
       floatingActionButton: _filteredTodos.isNotEmpty ? _buildFAB() : null,
