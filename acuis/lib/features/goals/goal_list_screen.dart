@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../main.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
+import '../../models/journey_plan.dart';
+import '../../shared/services/journey_planner_service.dart';
 import '../../shared/services/smart_todo_generator_service.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
@@ -16,7 +18,9 @@ class GoalListScreen extends StatefulWidget {
   final void Function(int, Goal) onEdit;
   final void Function(int) onDelete;
   final void Function(List<Todo>) onAddTodos;
+  final void Function(JourneyPlan) onJourneyPlanCreated;
   final List<Todo> todos;
+  final String? apiKey;
   const GoalListScreen({
     super.key,
     required this.goals,
@@ -25,7 +29,9 @@ class GoalListScreen extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onAddTodos,
+    required this.onJourneyPlanCreated,
     this.todos = const [],
+    this.apiKey,
   });
   @override
   State<GoalListScreen> createState() => _GoalListScreenState();
@@ -264,10 +270,6 @@ class _GoalListScreenState extends State<GoalListScreen> {
       );
 
   void _showSheet() {
-    final titleCtrl = TextEditingController();
-    final descCtrl  = TextEditingController();
-    GoalType type   = GoalType.shortTerm;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -275,73 +277,14 @@ class _GoalListScreenState extends State<GoalListScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => Padding(
-          padding: EdgeInsets.only(
-            left: 24, right: 24, top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 36,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(child: _SheetHandle()),
-              const SizedBox(height: 22),
-              Text('New goal',
-                  style: GoogleFonts.comfortaa(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink)),
-              const SizedBox(height: 20),
-              _AppField(ctrl: titleCtrl, hint: 'Goal title', autofocus: true),
-              const SizedBox(height: 10),
-              _AppField(ctrl: descCtrl, hint: 'Description (optional)', maxLines: 3),
-              const SizedBox(height: 16),
-              Row(
-                children: GoalType.values.map((t) {
-                  final sel = type == t;
-                  return GestureDetector(
-                    onTap: () => setS(() => type = t),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: sel ? AppColors.ink : AppColors.chip,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        t == GoalType.shortTerm ? 'Short term' : 'Long term',
-                        style: GoogleFonts.comfortaa(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: sel ? Colors.white : AppColors.inkLight,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-              _PrimaryButton(
-                label: 'Add goal',
-                onTap: () {
-                  if (titleCtrl.text.trim().isNotEmpty) {
-                    widget.onAdd(Goal(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      title: titleCtrl.text.trim(),
-                      description: descCtrl.text.trim(),
-                      type: type,
-                      createdAt: DateTime.now(),
-                    ));
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
+      builder: (ctx) => _NewGoalFlow(
+        apiKey: widget.apiKey,
+        onGoalCreated: (goal, plan) {
+          widget.onAdd(goal);
+          if (plan != null) {
+            widget.onJourneyPlanCreated(plan);
+          }
+        },
       ),
     );
   }
@@ -625,8 +568,8 @@ class _AppField extends StatelessWidget {
 
 class _PrimaryButton extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
-  const _PrimaryButton({required this.label, required this.onTap});
+  final VoidCallback? onTap;
+  const _PrimaryButton({required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -635,7 +578,7 @@ class _PrimaryButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: AppColors.ink,
+            color: onTap == null ? AppColors.ink.withValues(alpha: 0.5) : AppColors.ink,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Center(
@@ -1035,4 +978,434 @@ class _EditableTaskRowState extends State<_EditableTaskRow> {
       ),
     );
   }
+}
+
+// ── New Goal Creation Flow (Multi-step) ─────────────────────────────────────
+
+class _NewGoalFlow extends StatefulWidget {
+  final String? apiKey;
+  final void Function(Goal, JourneyPlan?) onGoalCreated;
+
+  const _NewGoalFlow({
+    required this.apiKey,
+    required this.onGoalCreated,
+  });
+
+  @override
+  State<_NewGoalFlow> createState() => _NewGoalFlowState();
+}
+
+class _NewGoalFlowState extends State<_NewGoalFlow> {
+  int _step = 0;
+  final _titleCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _outcomeCtrl = TextEditingController();
+  int _selectedDays = 90;
+  int _dailyMinutes = 15;
+  DurationEstimate? _estimate;
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    _outcomeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _estimateDuration() async {
+    if (widget.apiKey == null || widget.apiKey!.isEmpty) {
+      // No API key, use defaults
+      setState(() {
+        _estimate = DurationEstimate(
+          minimumDays: 30,
+          recommendedDays: 90,
+          maximumDays: 180,
+          reasoning: 'Set your API key in Alignment for personalized estimates',
+        );
+        _selectedDays = 90;
+        _step = 2;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final service = JourneyPlannerService(apiKey: widget.apiKey!);
+      final estimate = await service.estimateDuration(
+        goalTitle: _titleCtrl.text.trim(),
+        goalDescription: _descCtrl.text.trim(),
+        specificOutcome: _outcomeCtrl.text.trim().isNotEmpty
+            ? _outcomeCtrl.text.trim()
+            : null,
+      );
+
+      setState(() {
+        _estimate = estimate;
+        _selectedDays = estimate.recommendedDays;
+        _dailyMinutes = estimate.dailyMinutesRecommended;
+        _step = 2;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+        // Use defaults on error
+        _estimate = DurationEstimate(
+          minimumDays: 30,
+          recommendedDays: 90,
+          maximumDays: 180,
+          reasoning: 'Using default estimate',
+        );
+        _selectedDays = 90;
+        _step = 2;
+      });
+    }
+  }
+
+  Future<void> _createGoal() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final goal = Goal(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        type: _selectedDays <= 90 ? GoalType.shortTerm : GoalType.longTerm,
+        createdAt: DateTime.now(),
+        targetDate: DateTime.now().add(Duration(days: _selectedDays)),
+      );
+
+      JourneyPlan? plan;
+
+      if (widget.apiKey != null && widget.apiKey!.isNotEmpty) {
+        final service = JourneyPlannerService(apiKey: widget.apiKey!);
+        plan = await service.createJourneyPlan(
+          goal: goal,
+          selectedDays: _selectedDays,
+          dailyMinutes: _dailyMinutes,
+        );
+      }
+
+      widget.onGoalCreated(goal, plan);
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 36,
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _buildCurrentStep(),
+      ),
+    );
+  }
+
+  Widget _buildCurrentStep() {
+    switch (_step) {
+      case 0:
+        return _buildStep1();
+      case 1:
+        return _buildLoadingEstimate();
+      case 2:
+        return _buildStep2();
+      case 3:
+        return _buildCreatingGoal();
+      default:
+        return _buildStep1();
+    }
+  }
+
+  // Step 1: Goal title and outcome
+  Widget _buildStep1() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      key: const ValueKey('step1'),
+      children: [
+        Center(child: _SheetHandle()),
+        const SizedBox(height: 22),
+        Text('New goal',
+            style: GoogleFonts.comfortaa(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink)),
+        const SizedBox(height: 20),
+        _AppField(ctrl: _titleCtrl, hint: 'What do you want to achieve?', autofocus: true),
+        const SizedBox(height: 12),
+        _AppField(ctrl: _outcomeCtrl, hint: 'What does "done" look like? (be specific)', maxLines: 2),
+        const SizedBox(height: 6),
+        Text('Specific goals are 2.5x more likely to be achieved',
+            style: GoogleFonts.comfortaa(
+                fontSize: 11, color: AppColors.inkFaint)),
+        const SizedBox(height: 12),
+        _AppField(ctrl: _descCtrl, hint: 'Any additional context (optional)', maxLines: 2),
+        const SizedBox(height: 24),
+        _PrimaryButton(
+          label: 'Next',
+          onTap: _titleCtrl.text.trim().isEmpty
+              ? null
+              : () {
+                  setState(() {
+                    _step = 1;
+                  });
+                  _estimateDuration();
+                },
+        ),
+      ],
+    );
+  }
+
+  // Loading state while estimating
+  Widget _buildLoadingEstimate() {
+    return Column(
+      key: const ValueKey('loading'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(child: _SheetHandle()),
+        const SizedBox(height: 40),
+        const CircularProgressIndicator(color: AppColors.ink),
+        const SizedBox(height: 20),
+        Text('Analyzing your goal...',
+            style: GoogleFonts.comfortaa(
+                fontSize: 14, color: AppColors.inkLight)),
+      ],
+    );
+  }
+
+  // Step 2: Duration selection
+  Widget _buildStep2() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      key: const ValueKey('step2'),
+      children: [
+        Center(child: _SheetHandle()),
+        const SizedBox(height: 22),
+        Text('Timeline',
+            style: GoogleFonts.comfortaa(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink)),
+        const SizedBox(height: 16),
+        if (_estimate?.reasoning.isNotEmpty == true) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.bg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _estimate!.reasoning,
+              style: GoogleFonts.comfortaa(
+                  fontSize: 12, color: AppColors.inkLight, height: 1.4),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Text('How ambitious do you want to be?',
+            style: GoogleFonts.comfortaa(
+                fontSize: 13, color: AppColors.ink)),
+        const SizedBox(height: 12),
+        _buildDurationOption(
+          days: _estimate?.minimumDays ?? 30,
+          minutes: _estimate?.dailyMinutesMinimum ?? 30,
+          label: 'Aggressive',
+          subtitle: '${_estimate?.dailyMinutesMinimum ?? 30} min/day',
+        ),
+        const SizedBox(height: 8),
+        _buildDurationOption(
+          days: _estimate?.recommendedDays ?? 90,
+          minutes: _estimate?.dailyMinutesRecommended ?? 15,
+          label: 'Balanced',
+          subtitle: '${_estimate?.dailyMinutesRecommended ?? 15} min/day',
+          isRecommended: true,
+        ),
+        const SizedBox(height: 8),
+        _buildDurationOption(
+          days: _estimate?.maximumDays ?? 180,
+          minutes: _estimate?.dailyMinutesMaximum ?? 10,
+          label: 'Relaxed',
+          subtitle: '${_estimate?.dailyMinutesMaximum ?? 10} min/day',
+        ),
+        const SizedBox(height: 24),
+        if (_error != null)
+          Text(_error!,
+              style: GoogleFonts.comfortaa(
+                  fontSize: 12, color: Colors.red)),
+        Row(
+          children: [
+            Expanded(
+              child: _SecondaryButton(
+                label: 'Back',
+                onTap: () => setState(() => _step = 0),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _PrimaryButton(
+                label: 'Create goal',
+                onTap: _isLoading ? null : _createGoal,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDurationOption({
+    required int days,
+    required int minutes,
+    required String label,
+    required String subtitle,
+    bool isRecommended = false,
+  }) {
+    final isSelected = _selectedDays == days;
+    final months = (days / 30).round();
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDays = days;
+          _dailyMinutes = minutes;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.ink : AppColors.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isRecommended && !isSelected
+                ? AppColors.ink.withValues(alpha: 0.3)
+                : Colors.transparent,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(label,
+                        style: GoogleFonts.comfortaa(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? Colors.white : AppColors.ink,
+                        )),
+                    if (isRecommended) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : AppColors.ink.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text('Recommended',
+                            style: GoogleFonts.comfortaa(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? Colors.white : AppColors.ink,
+                            )),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(subtitle,
+                    style: GoogleFonts.comfortaa(
+                      fontSize: 12,
+                      color: isSelected ? Colors.white70 : AppColors.inkLight,
+                    )),
+              ],
+            ),
+            Text(
+              months == 1 ? '1 month' : '$months months',
+              style: GoogleFonts.comfortaa(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? Colors.white : AppColors.ink,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Creating goal loading state
+  Widget _buildCreatingGoal() {
+    return Column(
+      key: const ValueKey('creating'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(child: _SheetHandle()),
+        const SizedBox(height: 40),
+        const CircularProgressIndicator(color: AppColors.ink),
+        const SizedBox(height: 20),
+        Text('Creating your journey plan...',
+            style: GoogleFonts.comfortaa(
+                fontSize: 14, color: AppColors.inkLight)),
+      ],
+    );
+  }
+}
+
+// Secondary button for "Back" actions
+class _SecondaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+
+  const _SecondaryButton({required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.bg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Center(
+            child: Text(label,
+                style: GoogleFonts.comfortaa(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15)),
+          ),
+        ),
+      );
 }

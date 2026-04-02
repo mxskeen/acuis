@@ -8,6 +8,7 @@ import 'features/todos/todo_list_screen.dart';
 import 'features/alignment/alignment_screen.dart';
 import 'models/goal.dart';
 import 'models/todo.dart';
+import 'models/journey_plan.dart';
 import 'shared/services/storage_service.dart';
 import 'shared/services/alignment_refresh_service.dart';
 import 'shared/services/xp_tracking_service.dart';
@@ -104,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _idx = 0;
   List<Goal> goals = [];
   List<Todo> todos = [];
+  List<JourneyPlan> journeyPlans = [];
   late final PageController _pageCtrl;
   final _storage = StorageService();
   final _refreshService = AlignmentRefreshService();
@@ -118,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _pageCtrl = PageController();
     goals = _storage.loadGoalsSync();
     todos = _storage.loadTodosSync();
+    journeyPlans = _storage.loadJourneyPlansSync();
     _userName = _storage.loadUserNameSync();
     if (_userName == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showNameDialog());
@@ -188,6 +191,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _saveData() {
     _storage.saveGoals(goals);
     _storage.saveTodos(todos);
+    _storage.saveJourneyPlans(journeyPlans);
+  }
+
+  void _onJourneyPlanCreated(JourneyPlan plan) {
+    setState(() {
+      journeyPlans = [...journeyPlans, plan];
+    });
+    _saveData();
   }
 
   @override
@@ -247,6 +258,8 @@ class _HomeScreenState extends State<HomeScreen> {
             goals: goals,
             todos: todos,
             userName: _userName,
+            apiKey: _storage.loadApiKeySync(),
+            onJourneyPlanCreated: _onJourneyPlanCreated,
             onAdd: (g) async {
               setState(() => goals = [...goals, g]);
               _saveData();
