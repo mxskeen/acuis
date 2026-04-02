@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/goal.dart';
 import '../../models/todo.dart';
 import '../../models/velocity_prediction.dart';
+import '../../models/journey_plan.dart';
 
 class StorageService {
   static const _goalsKey = 'acuis_goals';
@@ -11,6 +12,7 @@ class StorageService {
   static const _apiKeyKey = 'acuis_nvidia_api_key';
   static const _userNameKey = 'acuis_user_name';
   static const _velocitySnapshotsKey = 'acuis_velocity_snapshots';
+  static const _journeyPlansKey = 'acuis_journey_plans';
 
   static late final SharedPreferences _prefs;
 
@@ -104,6 +106,37 @@ class StorageService {
       debugPrint('Error loading velocity snapshots: $e');
       return [];
     }
+  }
+
+  // ── Journey Plans ──────────────────────────────────────────
+  Future<void> saveJourneyPlans(List<JourneyPlan> plans) async {
+    final json = plans.map((p) => p.toJson()).toList();
+    await _prefs.setString(_journeyPlansKey, jsonEncode(json));
+  }
+
+  List<JourneyPlan> loadJourneyPlansSync() {
+    try {
+      final raw = _prefs.getString(_journeyPlansKey);
+      if (raw == null) return [];
+      final list = jsonDecode(raw) as List;
+      final List<JourneyPlan> validPlans = [];
+      for (var j in list) {
+        try {
+          validPlans.add(JourneyPlan.fromJson(j));
+        } catch (e) {
+          debugPrint('Error parsing journey plan: $e');
+        }
+      }
+      return validPlans;
+    } catch (e) {
+      debugPrint('Error loading journey plans: $e');
+      return [];
+    }
+  }
+
+  JourneyPlan? loadJourneyPlanForGoal(String goalId) {
+    final plans = loadJourneyPlansSync();
+    return plans.where((p) => p.goalId == goalId).firstOrNull;
   }
 
   // ── Generic key-value storage for services ─────────────────
