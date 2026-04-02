@@ -810,54 +810,56 @@ class _SmartGenerateTasksDialogState extends State<_SmartGenerateTasksDialog> {
                         textAlign: TextAlign.center),
                   ],
                 )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Progress assessment
-                    if (_progressAssessment != null && _progressAssessment!.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.bg,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(_getPhaseIcon(), size: 18, color: _getPhaseColor()),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _progressAssessment!,
-                                style: GoogleFonts.comfortaa(
-                                  fontSize: 12,
-                                  color: AppColors.inkLight,
-                                  height: 1.4,
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Progress assessment
+                      if (_progressAssessment != null && _progressAssessment!.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.bg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(_getPhaseIcon(), size: 18, color: _getPhaseColor()),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _progressAssessment!,
+                                  style: GoogleFonts.comfortaa(
+                                    fontSize: 12,
+                                    color: AppColors.inkLight,
+                                    height: 1.4,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    Row(
-                      children: [
-                        const Icon(Icons.edit_outlined, size: 14, color: AppColors.inkFaint),
-                        const SizedBox(width: 6),
-                        Text('Tap to edit any step before adding',
-                            style: GoogleFonts.comfortaa(
-                                fontSize: 11, color: AppColors.inkFaint)),
+                        const SizedBox(height: 16),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    ..._controllers.asMap().entries.map((entry) {
-                      return _EditableTaskRow(
-                        index: entry.key,
-                        controller: entry.value,
-                      );
-                    }),
-                  ],
+                      Row(
+                        children: [
+                          const Icon(Icons.edit_outlined, size: 14, color: AppColors.inkFaint),
+                          const SizedBox(width: 6),
+                          Text('Tap to edit any step before adding',
+                              style: GoogleFonts.comfortaa(
+                                  fontSize: 11, color: AppColors.inkFaint)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ..._controllers.asMap().entries.map((entry) {
+                        return _EditableTaskRow(
+                          index: entry.key,
+                          controller: entry.value,
+                        );
+                      }),
+                    ],
+                  ),
                 ),
       actions: _isGenerating
           ? null

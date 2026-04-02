@@ -631,7 +631,7 @@ class _TodoCard extends StatelessWidget {
     required this.onLongPress,
   });
 
-  void _showReasonSheet(BuildContext context, Goal goal) {
+  void _showReasonSheet(BuildContext context, Goal goal, VoidCallback onToggle) {
     final apiKey = StorageService().loadApiKeySync() ?? '';
     showModalBottomSheet(
       context: context,
@@ -643,6 +643,7 @@ class _TodoCard extends StatelessWidget {
         todo: todo,
         goal: goal,
         apiKey: apiKey,
+        onMarkComplete: onToggle,
       ),
     );
   }
@@ -652,7 +653,7 @@ class _TodoCard extends StatelessWidget {
     final goal = goals.where((g) => g.id == todo.goalId).firstOrNull;
 
     return GestureDetector(
-      onTap: goal != null ? () => _showReasonSheet(context, goal) : null,
+      onTap: goal != null ? () => _showReasonSheet(context, goal, onToggle) : null,
       onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -730,10 +731,12 @@ class _ReasonSheet extends StatefulWidget {
   final Todo todo;
   final Goal goal;
   final String apiKey;
+  final VoidCallback? onMarkComplete;
   const _ReasonSheet({
     required this.todo,
     required this.goal,
     required this.apiKey,
+    this.onMarkComplete,
   });
 
   @override
@@ -847,12 +850,44 @@ class _ReasonSheetState extends State<_ReasonSheet> {
             Text(_error!,
                 style: GoogleFonts.comfortaa(
                     fontSize: 13, color: Colors.red, height: 1.5))
-          else
+          else ...[
             Text(_reason!,
                 style: GoogleFonts.comfortaa(
                     fontSize: 14,
                     color: AppColors.ink,
                     height: 1.6)),
+            if (widget.onMarkComplete != null && !widget.todo.completed) ...[
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onMarkComplete?.call();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF43A047),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle_outline, size: 18, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text('Mark as Completed',
+                            style: GoogleFonts.comfortaa(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );
