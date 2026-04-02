@@ -812,65 +812,81 @@ class _ReasonSheetState extends State<_ReasonSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36, height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
+    final showMarkComplete = widget.onMarkComplete != null && !widget.todo.completed;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.82,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              const Icon(Icons.description_outlined, size: 18, color: AppColors.ink),
-              const SizedBox(width: 8),
-              Text('Why this step?',
-                  style: GoogleFonts.comfortaa(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(widget.todo.title,
-              style: GoogleFonts.comfortaa(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.inkLight)),
-          const SizedBox(height: 20),
-          if (_loading)
+            const SizedBox(height: 20),
             Row(
               children: [
-                const SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
-                ),
-                const SizedBox(width: 12),
-                Text('Thinking...',
+                const Icon(Icons.description_outlined, size: 18, color: AppColors.ink),
+                const SizedBox(width: 8),
+                Text('Why this step?',
                     style: GoogleFonts.comfortaa(
-                        fontSize: 13, color: AppColors.inkLight)),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink)),
               ],
-            )
-          else if (_error != null)
-            Text(_error!,
+            ),
+            const SizedBox(height: 8),
+            Text(widget.todo.title,
                 style: GoogleFonts.comfortaa(
-                    fontSize: 13, color: Colors.red, height: 1.5))
-          else ...[
-            Text(_reason!,
-                style: GoogleFonts.comfortaa(
-                    fontSize: 14,
-                    color: AppColors.ink,
-                    height: 1.6)),
-            if (widget.onMarkComplete != null && !widget.todo.completed) ...[
-              const SizedBox(height: 20),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.inkLight)),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                child: _loading
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: AppColors.ink),
+                            ),
+                            const SizedBox(width: 12),
+                            Text('Thinking...',
+                                style: GoogleFonts.comfortaa(
+                                    fontSize: 13, color: AppColors.inkLight)),
+                          ],
+                        ),
+                      )
+                    : _error != null
+                        ? Text(_error!,
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 13, color: Colors.red, height: 1.5))
+                        : Text(_reason!,
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 14,
+                                color: AppColors.ink,
+                                height: 1.6)),
+              ),
+            ),
+            if (showMarkComplete) ...[
+              const SizedBox(height: 16),
               GestureDetector(
                 onTap: () {
                   Navigator.pop(context);
@@ -878,16 +894,24 @@ class _ReasonSheetState extends State<_ReasonSheet> {
                 },
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
                   decoration: BoxDecoration(
                     color: const Color(0xFF43A047),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF43A047).withValues(alpha: 0.18),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: Center(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.check_circle_outline, size: 18, color: Colors.white),
+                        const Icon(Icons.check_circle_outline,
+                            size: 18, color: Colors.white),
                         const SizedBox(width: 8),
                         Text('Mark as Completed',
                             style: GoogleFonts.comfortaa(
@@ -901,7 +925,7 @@ class _ReasonSheetState extends State<_ReasonSheet> {
               ),
             ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -1022,7 +1022,19 @@ class _NewGoalFlowState extends State<_NewGoalFlow> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _titleCtrl.addListener(_handleTextChanged);
+  }
+
+  void _handleTextChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  @override
   void dispose() {
+    _titleCtrl.removeListener(_handleTextChanged);
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _outcomeCtrl.dispose();
@@ -1133,9 +1145,12 @@ class _NewGoalFlowState extends State<_NewGoalFlow> {
         top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 36,
       ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _buildCurrentStep(),
+      child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _buildCurrentStep(),
+        ),
       ),
     );
   }
