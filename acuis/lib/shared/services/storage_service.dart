@@ -5,11 +5,13 @@ import '../../models/goal.dart';
 import '../../models/todo.dart';
 import '../../models/velocity_prediction.dart';
 import '../../models/journey_plan.dart';
+import '../../models/ai_config.dart';
 
 class StorageService {
   static const _goalsKey = 'acuis_goals';
   static const _todosKey = 'acuis_todos';
   static const _apiKeyKey = 'acuis_nvidia_api_key';
+  static const _aiConfigKey = 'acuis_ai_config';
   static const _userNameKey = 'acuis_user_name';
   static const _velocitySnapshotsKey = 'acuis_velocity_snapshots';
   static const _journeyPlansKey = 'acuis_journey_plans';
@@ -72,13 +74,43 @@ class StorageService {
     }
   }
 
-  // ── API Key ──────────────────────────────────────────────
+  // ── API Key (legacy, kept for migration) ──────────────────
   Future<void> saveApiKey(String key) async {
     await _prefs.setString(_apiKeyKey, key);
   }
 
   String? loadApiKeySync() {
     return _prefs.getString(_apiKeyKey);
+  }
+
+  // ── AI Config ─────────────────────────────────────────────
+  Future<void> saveAIConfig(AIConfig config) async {
+    await _prefs.setString(_aiConfigKey, jsonEncode(config.toJson()));
+  }
+
+  AIConfig loadAIConfigSync() {
+    // Migrate old API key if present
+    final legacyKey = _prefs.getString(_apiKeyKey);
+    if (legacyKey != null && legacyKey.isNotEmpty) {
+      // Migrate to new format
+      final config = AIConfig(
+        customApiKey: legacyKey,
+        useCustomProvider: true,
+      );
+      // Save in new format and clear old
+      _prefs.setString(_aiConfigKey, jsonEncode(config.toJson()));
+      _prefs.remove(_apiKeyKey);
+      return config;
+    }
+
+    final raw = _prefs.getString(_aiConfigKey);
+    if (raw == null) return const AIConfig();
+    try {
+      return AIConfig.fromJson(jsonDecode(raw));
+    } catch (e) {
+      debugPrint('Error loading AI config: $e');
+      return const AIConfig();
+    }
   }
 
   // ── User Name ────────────────────────────────────────────

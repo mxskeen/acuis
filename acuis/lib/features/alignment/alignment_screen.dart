@@ -5,6 +5,7 @@ import '../../models/goal.dart';
 import '../../models/todo.dart';
 import '../../models/alignment_result.dart';
 import '../../models/smart_scores.dart';
+import '../../models/ai_config.dart';
 import '../../shared/services/ai_alignment_service.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/velocity_service.dart';
@@ -47,7 +48,7 @@ class AlignmentScreen extends StatefulWidget {
 class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAliveClientMixin {
   final _storage = StorageService();
   bool _isAnalyzing = false;
-  String _apiKey = '';
+  AIConfig _aiConfig = const AIConfig();
   VelocityService? _velocityService;
   GamificationService? _gamificationService;
   StreakService? _streakService;
@@ -69,7 +70,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
   void _initOnce() {
     if (_initialized) return;
     _initialized = true;
-    _apiKey = _storage.loadApiKeySync() ?? '';
+    _aiConfig = _storage.loadAIConfigSync();
     _nudgeService = NudgeService();
     _initServices();
     widget.refreshService.addListener(_onRefreshTriggered);
@@ -112,7 +113,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
   void _onRefreshTriggered() {
     // Only refresh if version changed and we have API key
     if (widget.refreshService.refreshVersion != _lastRefreshVersion &&
-        _apiKey.isNotEmpty &&
+        _aiConfig.isAvailable &&
         !_isAnalyzing) {
       _lastRefreshVersion = widget.refreshService.refreshVersion;
 
@@ -146,7 +147,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
   }
 
   Future<void> _analyze({bool autoRefresh = false}) async {
-    if (_apiKey.isEmpty) {
+    if (!_aiConfig.isAvailable) {
       if (!autoRefresh) {
         _showSettingsSheet(context);
       }
@@ -156,7 +157,11 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
     setState(() => _isAnalyzing = true);
 
     try {
-      final service = AIAlignmentService(apiKey: _apiKey);
+      final service = AIAlignmentService(
+        apiKey: _aiConfig.effectiveApiKey,
+        apiUrl: _aiConfig.effectiveApiUrl,
+        model: _aiConfig.effectiveModel,
+      );
 
       // Build context with velocity data
       final velocity = _velocityService!.getVelocity(7);
@@ -291,7 +296,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    if (!_isAnalyzing && _apiKey.isNotEmpty) {
+                    if (!_isAnalyzing && _aiConfig.isAvailable) {
                       await _analyze();
                     }
                   },
@@ -1064,7 +1069,10 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
   }
 
   void _showSettingsSheet(BuildContext context) {
-    final keyCtrl = TextEditingController(text: _apiKey);
+    final keyCtrl = TextEditingController(text: _aiConfig.customApiKey ?? '');
+    final urlCtrl = TextEditingController(text: _aiConfig.customApiUrl ?? AIConfig.defaultApiUrl);
+    final modelCtrl = TextEditingController(text: _aiConfig.customModel ?? AIConfig.defaultModel);
+    bool useCustom = _aiConfig.useCustomProvider;
 
     showModalBottomSheet(
       context: context,
@@ -1073,60 +1081,151 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 24, right: 24, top: 20,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 36,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 22),
-            Text('AI Api Settings',
-                style: GoogleFonts.comfortaa(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.ink)),
-            const SizedBox(height: 8),
-            Text('Enter your AI API key to enable SMART-based alignment scoring using Mistral (119B).',
-                style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.inkLight, height: 1.4)),
-            const SizedBox(height: 20),
-            TextField(
-              controller: keyCtrl,
-              obscureText: true,
-              style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
-              decoration: InputDecoration(
-                hintText: 'Enter API Key (sk-...)',
-                hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
-                filled: true,
-                fillColor: AppColors.bg,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              ),
-            ),
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () async {
-                final key = keyCtrl.text.trim();
-                await _storage.saveApiKey(key);
-                setState(() => _apiKey = key);
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(14)),
-                child: Center(
-                  child: Text('Save Key',
-                      style: GoogleFonts.comfortaa(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 36,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36, height: 4,
+                    decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 22),
+                Text('AI Provider Settings',
+                    style: GoogleFonts.comfortaa(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                const SizedBox(height: 8),
+                Text('Use the built-in AI or configure your own OpenAI-compatible API.',
+                    style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.inkLight, height: 1.4)),
+                const SizedBox(height: 20),
+
+                // Use custom provider toggle
+                Row(
+                  children: [
+                    Checkbox(
+                      value: useCustom,
+                      onChanged: (v) => setModalState(() => useCustom = v ?? false),
+                      activeColor: AppColors.ink,
+                    ),
+                    Expanded(
+                      child: Text('Use custom API provider',
+                          style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                if (useCustom) ...[
+                  // API Key
+                  Text('API Key', style: GoogleFonts.comfortaa(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkLight)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: keyCtrl,
+                    obscureText: true,
+                    style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
+                    decoration: InputDecoration(
+                      hintText: 'Enter API Key',
+                      hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
+                      filled: true,
+                      fillColor: AppColors.bg,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // API URL
+                  Text('API Base URL', style: GoogleFonts.comfortaa(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkLight)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: urlCtrl,
+                    style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
+                    decoration: InputDecoration(
+                      hintText: 'https://api.openai.com/v1/chat/completions',
+                      hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
+                      filled: true,
+                      fillColor: AppColors.bg,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Model
+                  Text('Model ID', style: GoogleFonts.comfortaa(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkLight)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: modelCtrl,
+                    style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
+                    decoration: InputDecoration(
+                      hintText: 'gpt-4o-mini, llama-3.1-70b, etc.',
+                      hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
+                      filled: true,
+                      fillColor: AppColors.bg,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ] else ...[
+                  // Built-in info
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.chip,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: const Color(0xFF43A047), size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            AIConfig.builtInApiKey != null
+                              ? 'Using built-in AI (no setup needed)'
+                              : 'Built-in AI not available. Add your own API key.',
+                            style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.ink),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 24),
+                GestureDetector(
+                  onTap: () async {
+                    final config = AIConfig(
+                      customApiKey: keyCtrl.text.trim().isEmpty ? null : keyCtrl.text.trim(),
+                      customApiUrl: urlCtrl.text.trim().isEmpty ? null : urlCtrl.text.trim(),
+                      customModel: modelCtrl.text.trim().isEmpty ? null : modelCtrl.text.trim(),
+                      useCustomProvider: useCustom,
+                    );
+                    await _storage.saveAIConfig(config);
+                    setState(() => _aiConfig = config);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(14)),
+                    child: Center(
+                      child: Text('Save Settings',
+                          style: GoogleFonts.comfortaa(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
