@@ -44,7 +44,7 @@ class AlignmentScreen extends StatefulWidget {
   State<AlignmentScreen> createState() => _AlignmentScreenState();
 }
 
-class _AlignmentScreenState extends State<AlignmentScreen> {
+class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAliveClientMixin {
   final _storage = StorageService();
   bool _isAnalyzing = false;
   String _apiKey = '';
@@ -55,10 +55,20 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
   XPTrackingService? _xpTrackingService;
   int _lastRefreshVersion = 0;
   bool _servicesInitialized = false;
+  bool _initialized = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _initOnce();
+  }
+
+  void _initOnce() {
+    if (_initialized) return;
+    _initialized = true;
     _apiKey = _storage.loadApiKeySync() ?? '';
     _nudgeService = NudgeService();
     _initServices();
@@ -252,6 +262,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final linkedTodos = widget.todos.where((t) => t.goalId != null).toList();
     final scoredTodos = linkedTodos.where((t) => t.alignmentScore != null).toList();
 

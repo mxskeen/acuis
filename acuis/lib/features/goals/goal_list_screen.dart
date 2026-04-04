@@ -37,25 +37,37 @@ class GoalListScreen extends StatefulWidget {
   State<GoalListScreen> createState() => _GoalListScreenState();
 }
 
-class _GoalListScreenState extends State<GoalListScreen> {
+class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAliveClientMixin {
   List<Goal> get goals => widget.goals;
   final _storage = StorageService();
   StreakService? _streakService;
   int _currentStreak = 0;
+  bool _initialized = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _initOnce();
+  }
+
+  void _initOnce() {
+    if (_initialized) return;
+    _initialized = true;
     _loadStreak();
   }
 
   Future<void> _loadStreak() async {
     final service = await StreakService.init();
     await service.checkAndUpdateStreak();
-    setState(() {
-      _streakService = service;
-      _currentStreak = service.getCurrentStreak();
-    });
+    if (mounted) {
+      setState(() {
+        _streakService = service;
+        _currentStreak = service.getCurrentStreak();
+      });
+    }
   }
   
   String _getIllustrationForGoals() {
@@ -122,6 +134,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: AppColors.bg,
       floatingActionButton: goals.isNotEmpty ? Padding(
@@ -810,54 +823,56 @@ class _SmartGenerateTasksDialogState extends State<_SmartGenerateTasksDialog> {
                         textAlign: TextAlign.center),
                   ],
                 )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Progress assessment
-                    if (_progressAssessment != null && _progressAssessment!.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.bg,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(_getPhaseIcon(), size: 18, color: _getPhaseColor()),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _progressAssessment!,
-                                style: GoogleFonts.comfortaa(
-                                  fontSize: 12,
-                                  color: AppColors.inkLight,
-                                  height: 1.4,
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Progress assessment
+                      if (_progressAssessment != null && _progressAssessment!.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.bg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(_getPhaseIcon(), size: 18, color: _getPhaseColor()),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _progressAssessment!,
+                                  style: GoogleFonts.comfortaa(
+                                    fontSize: 12,
+                                    color: AppColors.inkLight,
+                                    height: 1.4,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    Row(
-                      children: [
-                        const Icon(Icons.edit_outlined, size: 14, color: AppColors.inkFaint),
-                        const SizedBox(width: 6),
-                        Text('Tap to edit any step before adding',
-                            style: GoogleFonts.comfortaa(
-                                fontSize: 11, color: AppColors.inkFaint)),
+                        const SizedBox(height: 16),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    ..._controllers.asMap().entries.map((entry) {
-                      return _EditableTaskRow(
-                        index: entry.key,
-                        controller: entry.value,
-                      );
-                    }),
-                  ],
+                      Row(
+                        children: [
+                          const Icon(Icons.edit_outlined, size: 14, color: AppColors.inkFaint),
+                          const SizedBox(width: 6),
+                          Text('Tap to edit any step before adding',
+                              style: GoogleFonts.comfortaa(
+                                  fontSize: 11, color: AppColors.inkFaint)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ..._controllers.asMap().entries.map((entry) {
+                        return _EditableTaskRow(
+                          index: entry.key,
+                          controller: entry.value,
+                        );
+                      }),
+                    ],
+                  ),
                 ),
       actions: _isGenerating
           ? null
@@ -1007,7 +1022,19 @@ class _NewGoalFlowState extends State<_NewGoalFlow> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _titleCtrl.addListener(_handleTextChanged);
+  }
+
+  void _handleTextChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  @override
   void dispose() {
+    _titleCtrl.removeListener(_handleTextChanged);
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _outcomeCtrl.dispose();
@@ -1118,9 +1145,12 @@ class _NewGoalFlowState extends State<_NewGoalFlow> {
         top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 36,
       ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _buildCurrentStep(),
+      child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _buildCurrentStep(),
+        ),
       ),
     );
   }

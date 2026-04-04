@@ -33,11 +33,15 @@ class TodoListScreen extends StatefulWidget {
   State<TodoListScreen> createState() => _TodoListScreenState();
 }
 
-class _TodoListScreenState extends State<TodoListScreen> {
+class _TodoListScreenState extends State<TodoListScreen> with AutomaticKeepAliveClientMixin {
   List<Todo> get todos => widget.todos;
   StreakService? _streakService;
   int _currentStreak = 0;
   String? _selectedGoalId; // null means "All Goals"
+  bool _initialized = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   /// Todos filtered by selected goal
   List<Todo> get _filteredTodos {
@@ -54,15 +58,23 @@ class _TodoListScreenState extends State<TodoListScreen> {
   @override
   void initState() {
     super.initState();
+    _initOnce();
+  }
+
+  void _initOnce() {
+    if (_initialized) return;
+    _initialized = true;
     _loadStreak();
   }
 
   Future<void> _loadStreak() async {
     _streakService = await StreakService.init();
     await _streakService!.checkAndUpdateStreak();
-    setState(() {
-      _currentStreak = _streakService!.getCurrentStreak();
-    });
+    if (mounted) {
+      setState(() {
+        _currentStreak = _streakService!.getCurrentStreak();
+      });
+    }
   }
   
   Future<void> _checkStreakUpdate() async {
@@ -87,6 +99,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: AppColors.bg,
       floatingActionButton: _filteredTodos.isNotEmpty ? _buildFAB() : null,
@@ -631,7 +644,7 @@ class _TodoCard extends StatelessWidget {
     required this.onLongPress,
   });
 
-  void _showReasonSheet(BuildContext context, Goal goal) {
+  void _showReasonSheet(BuildContext context, Goal goal, VoidCallback onToggle) {
     final apiKey = StorageService().loadApiKeySync() ?? '';
     showModalBottomSheet(
       context: context,
@@ -643,6 +656,7 @@ class _TodoCard extends StatelessWidget {
         todo: todo,
         goal: goal,
         apiKey: apiKey,
+        onMarkComplete: onToggle,
       ),
     );
   }
@@ -652,7 +666,7 @@ class _TodoCard extends StatelessWidget {
     final goal = goals.where((g) => g.id == todo.goalId).firstOrNull;
 
     return GestureDetector(
-      onTap: goal != null ? () => _showReasonSheet(context, goal) : null,
+      onTap: goal != null ? () => _showReasonSheet(context, goal, onToggle) : null,
       onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -730,10 +744,12 @@ class _ReasonSheet extends StatefulWidget {
   final Todo todo;
   final Goal goal;
   final String apiKey;
+  final VoidCallback? onMarkComplete;
   const _ReasonSheet({
     required this.todo,
     required this.goal,
     required this.apiKey,
+    this.onMarkComplete,
   });
 
   @override
@@ -796,64 +812,120 @@ class _ReasonSheetState extends State<_ReasonSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36, height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
+    final showMarkComplete = widget.onMarkComplete != null && !widget.todo.completed;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.82,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              const Icon(Icons.description_outlined, size: 18, color: AppColors.ink),
-              const SizedBox(width: 8),
-              Text('Why this step?',
-                  style: GoogleFonts.comfortaa(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(widget.todo.title,
-              style: GoogleFonts.comfortaa(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.inkLight)),
-          const SizedBox(height: 20),
-          if (_loading)
+            const SizedBox(height: 20),
             Row(
               children: [
-                const SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
-                ),
-                const SizedBox(width: 12),
-                Text('Thinking...',
+                const Icon(Icons.description_outlined, size: 18, color: AppColors.ink),
+                const SizedBox(width: 8),
+                Text('Why this step?',
                     style: GoogleFonts.comfortaa(
-                        fontSize: 13, color: AppColors.inkLight)),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink)),
               ],
-            )
-          else if (_error != null)
-            Text(_error!,
+            ),
+            const SizedBox(height: 8),
+            Text(widget.todo.title,
                 style: GoogleFonts.comfortaa(
-                    fontSize: 13, color: Colors.red, height: 1.5))
-          else
-            Text(_reason!,
-                style: GoogleFonts.comfortaa(
-                    fontSize: 14,
-                    color: AppColors.ink,
-                    height: 1.6)),
-        ],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.inkLight)),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                child: _loading
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: AppColors.ink),
+                            ),
+                            const SizedBox(width: 12),
+                            Text('Thinking...',
+                                style: GoogleFonts.comfortaa(
+                                    fontSize: 13, color: AppColors.inkLight)),
+                          ],
+                        ),
+                      )
+                    : _error != null
+                        ? Text(_error!,
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 13, color: Colors.red, height: 1.5))
+                        : Text(_reason!,
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 14,
+                                color: AppColors.ink,
+                                height: 1.6)),
+              ),
+            ),
+            if (showMarkComplete) ...[
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onMarkComplete?.call();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF43A047),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF43A047).withValues(alpha: 0.18),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle_outline,
+                            size: 18, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text('Mark as Completed',
+                            style: GoogleFonts.comfortaa(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
