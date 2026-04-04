@@ -115,7 +115,7 @@ jobs:
           Version: 1.0.0
           Release: 1
           Summary: Goal tracking app
-          License: Proprietary
+          License: MIT
           BuildArch: x86_64
           
           %description
