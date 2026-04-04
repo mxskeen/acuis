@@ -47,7 +47,9 @@ jobs:
         working-directory: acuis
 
       - name: Build APK
-        run: flutter build apk --release
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: flutter build apk --release --dart-define=NVIDIA_API_KEY="$NVIDIA_API_KEY"
         working-directory: acuis
 
       - uses: actions/upload-artifact@v4
@@ -89,7 +91,9 @@ jobs:
         working-directory: acuis
 
       - name: Build Linux
-        run: flutter build linux --release
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: flutter build linux --release --dart-define=NVIDIA_API_KEY="$NVIDIA_API_KEY"
         working-directory: acuis
 
       # ── .deb ──────────────────────────────────────────────
@@ -190,7 +194,9 @@ jobs:
         working-directory: acuis
 
       - name: Build Windows
-        run: flutter build windows --release
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: flutter build windows --release --dart-define=NVIDIA_API_KEY="$env:NVIDIA_API_KEY"
         working-directory: acuis
 
       - name: Zip Windows build

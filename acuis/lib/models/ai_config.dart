@@ -7,9 +7,14 @@ class AIConfig {
   static const String defaultApiUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
   static const String defaultModel = 'mistralai/mistral-small-4-119b-2603';
 
-  // Built-in API key (for F-Droid users without their own key)
-  // This is a community/shared key with rate limits
-  static const String? builtInApiKey = null; // Set your key here if providing one
+  // Built-in API key (injected at build time via --dart-define)
+  // Users can override with their own keys
+  static const String? builtInApiKey = String.fromEnvironment(
+    'NVIDIA_API_KEY',
+    defaultValue: '',
+  ).isNotEmpty
+      ? String.fromEnvironment('NVIDIA_API_KEY')
+      : null;
 
   final String? customApiKey;
   final String? customApiUrl;
