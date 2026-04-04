@@ -62,7 +62,7 @@ class _StreakLevelDetailSheetState extends State<_StreakLevelDetailSheet> {
   }
 
   Future<void> _fetchAIMotivation() async {
-    final apiKey = StorageService().loadApiKeySync() ?? '';
+    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
     if (apiKey.isEmpty) {
       setState(() {
         _aiMotivation = _getLocalMotivation();
@@ -360,7 +360,7 @@ class _VelocityDetailSheetState extends State<_VelocityDetailSheet> {
   }
 
   Future<void> _fetchAIAnalysis() async {
-    final apiKey = StorageService().loadApiKeySync() ?? '';
+    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
     final thisWeekVelocity = widget.velocityService.getVelocity(7);
     final lastWeekVelocity = widget.velocityService.getVelocity(14) - thisWeekVelocity;
 
@@ -674,7 +674,7 @@ class _SMARTDetailSheetState extends State<_SMARTDetailSheet> {
       _aiSuggestion = null;
     });
 
-    final apiKey = StorageService().loadApiKeySync() ?? '';
+    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
     if (apiKey.isEmpty) {
       setState(() {
         _aiSuggestion = _getLocalSuggestion(todo);
@@ -980,7 +980,7 @@ class _GoalCoachSheetState extends State<_GoalCoachSheet> {
   }
 
   Future<void> _fetchAICoaching() async {
-    final apiKey = StorageService().loadApiKeySync() ?? '';
+    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
     final goalTodos = widget.todos.where((t) => t.goalId == widget.goal.id).toList();
     final completed = goalTodos.where((t) => t.completed).length;
     final prediction = widget.velocityService.predictCompletion(widget.goal, goalTodos);

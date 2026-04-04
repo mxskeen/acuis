@@ -101,7 +101,7 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
   }
 
   Future<void> _fetchAIFocus() async {
-    final apiKey = StorageService().loadApiKeySync() ?? '';
+    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
 
     // Get pending todos sorted by alignment score
     final pendingTodos = widget.todos

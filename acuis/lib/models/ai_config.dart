@@ -8,13 +8,14 @@ class AIConfig {
   static const String defaultModel = 'mistralai/mistral-small-4-119b-2603';
 
   // Built-in API key (injected at build time via --dart-define)
-  // Users can override with their own keys
-  static const String? builtInApiKey = String.fromEnvironment(
+  // Empty string means no built-in key; null-check in getters handles this
+  static const String builtInApiKeyRaw = String.fromEnvironment(
     'NVIDIA_API_KEY',
     defaultValue: '',
-  ).isNotEmpty
-      ? String.fromEnvironment('NVIDIA_API_KEY')
-      : null;
+  );
+
+  // Expose as nullable for cleaner logic - empty string becomes null
+  static const String? builtInApiKey = builtInApiKeyRaw == '' ? null : builtInApiKeyRaw;
 
   final String? customApiKey;
   final String? customApiUrl;

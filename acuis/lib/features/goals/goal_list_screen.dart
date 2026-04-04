@@ -79,7 +79,7 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
   
   Future<void> _showGenerateTasksDialog(int goalIndex) async {
     final goal = goals[goalIndex];
-    final apiKey = _storage.loadApiKeySync() ?? '';
+    final apiKey = _storage.loadAIConfigSync().effectiveApiKey;
 
     if (apiKey.isEmpty) {
       _showApiKeyRequiredDialog();

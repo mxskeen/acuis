@@ -645,7 +645,7 @@ class _TodoCard extends StatelessWidget {
   });
 
   void _showReasonSheet(BuildContext context, Goal goal, VoidCallback onToggle) {
-    final apiKey = StorageService().loadApiKeySync() ?? '';
+    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,

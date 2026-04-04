@@ -133,8 +133,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _runAutoGeneration() async {
     if (_autoGenerationInProgress) return;
 
-    final apiKey = _storage.loadApiKeySync();
-    if (apiKey == null || apiKey.isEmpty) return;
+    final aiConfig = _storage.loadAIConfigSync();
+    final apiKey = aiConfig.effectiveApiKey;
+    if (apiKey.isEmpty) return;
 
     final activeGoals = goals.where((g) => g.status == GoalStatus.active).toList();
     if (activeGoals.isEmpty) return;
@@ -258,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
             goals: goals,
             todos: todos,
             userName: _userName,
-            apiKey: _storage.loadApiKeySync(),
+            apiKey: _storage.loadAIConfigSync().effectiveApiKey,
             onJourneyPlanCreated: _onJourneyPlanCreated,
             onAdd: (g) async {
               setState(() => goals = [...goals, g]);
@@ -266,8 +267,9 @@ class _HomeScreenState extends State<HomeScreen> {
               _refreshService.onGoalsChanged();
 
               // Auto-generate todos for new goal
-              final apiKey = _storage.loadApiKeySync();
-              if (apiKey != null && apiKey.isNotEmpty) {
+              final aiConfig = _storage.loadAIConfigSync();
+              final apiKey = aiConfig.effectiveApiKey;
+              if (apiKey.isNotEmpty) {
                 final result = await _todoScheduler.generateForNewGoal(
                   goal: g,
                   apiKey: apiKey,
