@@ -134,7 +134,7 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
 
     try {
       final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
