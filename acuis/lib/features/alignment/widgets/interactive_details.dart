@@ -85,7 +85,7 @@ class _StreakLevelDetailSheetState extends State<_StreakLevelDetailSheet> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
@@ -380,7 +380,7 @@ class _VelocityDetailSheetState extends State<_VelocityDetailSheet> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
@@ -685,7 +685,7 @@ class _SMARTDetailSheetState extends State<_SMARTDetailSheet> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
@@ -995,7 +995,7 @@ class _GoalCoachSheetState extends State<_GoalCoachSheet> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
