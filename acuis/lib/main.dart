@@ -265,29 +265,10 @@ class _HomeScreenState extends State<HomeScreen> {
             userName: _userName,
             apiKey: _storage.loadAIConfigSync().effectiveApiKey,
             onJourneyPlanCreated: _onJourneyPlanCreated,
-            onAdd: (g) async {
+            onAdd: (g) {
               setState(() => goals = [...goals, g]);
               _saveData();
               _refreshService.onGoalsChanged();
-
-              // Auto-generate todos for new goal
-              final aiConfig = _storage.loadAIConfigSync();
-              final apiKey = aiConfig.effectiveApiKey;
-              if (apiKey.isNotEmpty) {
-                final result = await _todoScheduler.generateForNewGoal(
-                  goal: g,
-                  apiKey: apiKey,
-                  maxTodos: 5,
-                );
-
-                if (result.success && result.generatedTodos.isNotEmpty) {
-                  setState(() {
-                    todos = [...todos, ...result.generatedTodos];
-                  });
-                  _saveData();
-                  _refreshService.onTodosChanged();
-                }
-              }
             },
             onEdit: (index, g) {
               setState(() => goals = [...goals]..[index] = g);
