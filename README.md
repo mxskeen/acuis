@@ -186,4 +186,4 @@ Keep PRs small and scoped to a single concern. If you are adding a new feature, 
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see LICENSE file for details..
