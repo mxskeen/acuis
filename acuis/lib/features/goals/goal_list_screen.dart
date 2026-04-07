@@ -10,6 +10,7 @@ import '../../shared/services/smart_todo_generator_service.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
+import '../../shared/widgets/ai_settings_sheet.dart';
 
 class GoalListScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -76,7 +77,7 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
     if (goals.length >= 3) return 'assets/illustrations/girl-chilling-and-relaxing-while-using-phone.svg'; // 3-4 goals - Balanced
     return 'assets/illustrations/girl-with-plant.svg'; // 1-2 goals - Growing
   }
-  
+
   Future<void> _showGenerateTasksDialog(int goalIndex) async {
     final goal = goals[goalIndex];
     final apiKey = _storage.loadAIConfigSync().effectiveApiKey;
@@ -88,7 +89,21 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
 
     // Get existing todos for this goal
     final existingTodos = widget.todos.where((t) => t.goalId == goal.id).toList();
+    final pendingTodos = existingTodos.where((t) => !t.completed).toList();
 
+    // If there are pending todos, show a confirmation dialog first
+    if (pendingTodos.isNotEmpty) {
+      _showExistingTasksDialog(
+        goal: goal,
+        pendingCount: pendingTodos.length,
+        totalCount: existingTodos.length,
+        apiKey: apiKey,
+        existingTodos: existingTodos,
+      );
+      return;
+    }
+
+    // No pending todos, proceed with generation
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -103,7 +118,87 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
       ),
     );
   }
-  
+
+  void _showExistingTasksDialog({
+    required Goal goal,
+    required int pendingCount,
+    required int totalCount,
+    required String apiKey,
+    required List<Todo> existingTodos,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.task_alt_rounded,
+                size: 48,
+                color: const Color(0xFFE65100),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'You have $pendingCount pending step${pendingCount == 1 ? '' : 's'}',
+              style: GoogleFonts.comfortaa(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Complete your existing steps first before generating more. This helps you stay focused!',
+              style: GoogleFonts.comfortaa(
+                fontSize: 13,
+                color: AppColors.inkLight,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            _PrimaryButton(
+              label: 'View my steps',
+              onTap: () => Navigator.pop(ctx),
+            ),
+            const SizedBox(height: 12),
+            _SecondaryButton(
+              label: 'Generate more anyway',
+              onTap: () {
+                Navigator.pop(ctx);
+                // Proceed with generation anyway
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (ctx2) => _SmartGenerateTasksDialog(
+                    goal: goal,
+                    existingTodos: existingTodos,
+                    apiKey: apiKey,
+                    onTasksGenerated: (todos) {
+                      widget.onAddTodos(todos);
+                      Navigator.pop(ctx2);
+                    },
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showApiKeyRequiredDialog() {
     showDialog(
       context: context,
@@ -202,34 +297,43 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
                     ),
                   ],
                 ),
-                GestureDetector(
-                  onTap: () {
-                    if (_streakService != null) {
-                      showStreakSheet(context, _streakService!);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.local_fire_department_rounded, size: 14, color: _currentStreak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint),
-                        const SizedBox(width: 5),
-                        Text(
-                          _currentStreak > 0 ? '$_currentStreak' : '0',
-                          style: GoogleFonts.comfortaa(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Settings icon
+                    const SettingsIconButton(),
+                    const SizedBox(width: 4),
+                    // Streak badge
+                    GestureDetector(
+                      onTap: () {
+                        if (_streakService != null) {
+                          showStreakSheet(context, _streakService!);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.border),
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.local_fire_department_rounded, size: 14, color: _currentStreak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint),
+                            const SizedBox(width: 5),
+                            Text(
+                              _currentStreak > 0 ? '$_currentStreak' : '0',
+                              style: GoogleFonts.comfortaa(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -582,24 +686,34 @@ class _AppField extends StatelessWidget {
 class _PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
-  const _PrimaryButton({required this.label, this.onTap});
+  final bool isLoading;
+  const _PrimaryButton({required this.label, this.onTap, this.isLoading = false});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
+        onTap: isLoading ? null : onTap,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: onTap == null ? AppColors.ink.withValues(alpha: 0.5) : AppColors.ink,
+            color: onTap == null || isLoading ? AppColors.ink.withValues(alpha: 0.5) : AppColors.ink,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Center(
-            child: Text(label,
-                style: GoogleFonts.comfortaa(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15)),
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(label,
+                    style: GoogleFonts.comfortaa(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15)),
           ),
         ),
       );
@@ -1299,7 +1413,8 @@ class _NewGoalFlowState extends State<_NewGoalFlow> {
             Expanded(
               child: _PrimaryButton(
                 label: 'Create goal',
-                onTap: _isLoading ? null : _createGoal,
+                onTap: _createGoal,
+                isLoading: _isLoading,
               ),
             ),
           ],

@@ -15,7 +15,7 @@ import '../../../models/alignment_result.dart';
 /// - COM-B Model for Behavior Change
 class AlignmentScorer {
   static const _defaultUrl =
-      'https://integrate.api.nvidia.com/v1/chat/completions';
+      'https://api.openai.com/v1/chat/completions';
   static const _defaultModel = 'mistralai/mistral-small-4-119b-2603';
 
   final String apiKey;

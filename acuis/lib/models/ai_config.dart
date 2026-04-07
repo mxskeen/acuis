@@ -4,7 +4,7 @@
 class AIConfig {
   // Default configuration - built-in API for all users
   // Users can override with their own keys
-  static const String defaultApiUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
+  static const String defaultApiUrl = 'https://api.openai.com/v1/chat/completions';
   static const String defaultModel = 'mistralai/mistral-small-4-119b-2603';
 
   // Built-in API key (injected at build time via --dart-define)

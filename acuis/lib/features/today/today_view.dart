@@ -8,6 +8,7 @@ import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/ambient_animations.dart';
 import '../../shared/widgets/streak_sheet.dart';
+import '../../shared/widgets/ai_settings_sheet.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -28,6 +29,7 @@ class TodayView extends StatefulWidget {
   final VoidCallback onNavigateToAlignment;
   final void Function(Todo) onAddTodo;
   final void Function(int) onToggleTodo;
+  final VoidCallback? onSettingsChanged;
 
   const TodayView({
     super.key,
@@ -39,6 +41,7 @@ class TodayView extends StatefulWidget {
     required this.onNavigateToAlignment,
     required this.onAddTodo,
     required this.onToggleTodo,
+    this.onSettingsChanged,
   });
 
   @override
@@ -131,7 +134,7 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
 
     try {
       final response = await http.post(
-        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
+        Uri.parse('https://api.openai.com/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
@@ -525,51 +528,62 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
                 ],
               ),
             ),
-            // Streak badge
-            GestureDetector(
-              onTap: () {
-                if (_streakService != null) {
-                  showStreakSheet(context, _streakService!);
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _currentStreak > 0
-                      ? const Color(0xFFFF6B35).withValues(alpha: 0.1)
-                      : AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _currentStreak > 0
-                        ? const Color(0xFFFF6B35).withValues(alpha: 0.3)
-                        : AppColors.border,
+            // Settings and Streak badges
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Settings icon
+                SettingsIconButton(
+                  onSettingsChanged: widget.onSettingsChanged,
+                ),
+                const SizedBox(width: 4),
+                // Streak badge
+                GestureDetector(
+                  onTap: () {
+                    if (_streakService != null) {
+                      showStreakSheet(context, _streakService!);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _currentStreak > 0
+                          ? const Color(0xFFFF6B35).withValues(alpha: 0.1)
+                          : AppColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _currentStreak > 0
+                            ? const Color(0xFFFF6B35).withValues(alpha: 0.3)
+                            : AppColors.border,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.local_fire_department_rounded,
+                          size: 16,
+                          color: _currentStreak > 0
+                              ? const Color(0xFFFF6B35)
+                              : AppColors.inkFaint,
+                        ),
+                        const SizedBox(width: 6),
+                        AnimatedCounter(
+                          value: _currentStreak,
+                          style: GoogleFonts.comfortaa(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _currentStreak > 0
+                                ? const Color(0xFFFF6B35)
+                                : AppColors.inkFaint,
+                          ),
+                          duration: const Duration(milliseconds: 600),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 16,
-                      color: _currentStreak > 0
-                          ? const Color(0xFFFF6B35)
-                          : AppColors.inkFaint,
-                    ),
-                    const SizedBox(width: 6),
-                    AnimatedCounter(
-                      value: _currentStreak,
-                      style: GoogleFonts.comfortaa(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: _currentStreak > 0
-                            ? const Color(0xFFFF6B35)
-                            : AppColors.inkFaint,
-                      ),
-                      duration: const Duration(milliseconds: 600),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
           ],
         ),
