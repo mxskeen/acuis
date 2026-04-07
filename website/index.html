@@ -124,8 +124,9 @@
 
         .hero-buttons {
             display: flex;
-            gap: 16px;
+            gap: 12px;
             justify-content: center;
+            align-items: center;
             flex-wrap: wrap;
         }
 
@@ -135,7 +136,8 @@
             gap: 12px;
             background: var(--primary);
             color: var(--white);
-            padding: 14px 28px;
+            padding: 0 24px;
+            height: 52px;
             border-radius: 12px;
             text-decoration: none;
             font-weight: 600;
@@ -147,17 +149,10 @@
             box-shadow: 0 8px 24px rgba(26, 26, 46, 0.25);
         }
 
-        .btn-support {
-            background: var(--accent);
-        }
-
-        .btn-support:hover {
-            box-shadow: 0 8px 24px rgba(255, 64, 19, 0.3);
-        }
-
         .btn-store svg {
             width: 24px;
             height: 24px;
+            flex-shrink: 0;
         }
 
         .btn-store .store-text {
@@ -175,6 +170,66 @@
 
         .btn-store .store-text span {
             font-size: 1rem;
+        }
+
+        .btn-support-link {
+            display: inline-flex;
+            align-items: center;
+            height: 52px;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-support-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-support-link img {
+            height: 52px;
+            width: auto;
+            display: block;
+        }
+
+        .btn-chai {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 52px;
+            padding: 0 20px;
+            background: #ffffff;
+            border-radius: 12px;
+            text-decoration: none;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+            gap: 3px;
+        }
+
+        .btn-chai:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-chai img {
+            height: 22px;
+            object-fit: contain;
+        }
+
+        .btn-chai span {
+            color: #6b7280;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .hero-buttons-secondary {
+            display: flex;
+            justify-content: center;
+            margin-top: 12px;
         }
 
         /* Carousel */
@@ -359,6 +414,23 @@
             .nav-links a:not(.btn-primary) {
                 display: none;
             }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn-store,
+            .btn-support-link,
+            .btn-chai {
+                width: 220px;
+                justify-content: center;
+            }
+
+            .btn-support-link img {
+                width: 220px;
+                height: auto;
+            }
         }
 
         @media (max-width: 480px) {
@@ -401,10 +473,15 @@
                             <span>Google Play</span>
                         </span>
                     </a>
-                    <a href='https://ko-fi.com/maskeen' target='_blank'><img height='44' style='border:0px;height:44px;' src='https://storage.ko-fi.com/cdn/kofi3.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+                    <a href="https://ko-fi.com/maskeen" target="_blank" class="btn-support-link" aria-label="Buy Me a Coffee at ko-fi.com">
+                        <img src="https://storage.ko-fi.com/cdn/kofi3.png?v=6" alt="Buy Me a Coffee at ko-fi.com" />
+                    </a>
                 </div>
-                <div style="margin-top: 16px;">
-                    <a href="https://chai4.me/maskeen" target="_blank" title="Support maskeen on Chai4Me" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:8px 32px;border-radius:16px;text-decoration:none;border:1px solid #e5e7eb;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);transition:transform 0.2s;"><img src="https://chai4.me/icons/wordmark.png" alt="Chai4Me" style="height:32px;object-fit:contain;margin-bottom:4px;"/><span style="color:#6b7280;font-family:sans-serif;font-size:12px;font-weight:600;">Support via UPI</span></a>
+                <div class="hero-buttons-secondary">
+                    <a href="https://chai4.me/maskeen" target="_blank" class="btn-chai" title="Support maskeen on Chai4Me">
+                        <img src="https://chai4.me/icons/wordmark.png" alt="Chai4Me" />
+                        <span>Support via UPI</span>
+                    </a>
                 </div>
             </div>
         </section>
