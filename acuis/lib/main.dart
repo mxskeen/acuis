@@ -13,6 +13,7 @@ import 'shared/services/storage_service.dart';
 import 'shared/services/alignment_refresh_service.dart';
 import 'shared/services/xp_tracking_service.dart';
 import 'shared/services/daily_todo_scheduler.dart';
+import 'shared/services/in_app_update_service.dart';
 import 'splash_screen.dart';
 
 void main() async {
@@ -125,6 +126,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_userName == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showNameDialog());
     }
+    // Check for app updates (Android only)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      InAppUpdateService().checkForUpdateAsync(context);
+    });
     // Auto-generate todos on app launch if needed
     _runAutoGeneration();
   }
