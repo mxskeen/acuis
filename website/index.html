@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>acuis - goal alignment App</title>
     <meta name="description" content="A minimalist goal tracking app with visual progress feedback. Track your goals beautifully.">
+    <link rel="icon" type="image/png" href="icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -62,6 +63,8 @@
             color: var(--primary);
             text-decoration: none;
             letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
         }
 
         .nav-links {
@@ -372,7 +375,10 @@
 <body>
     <nav>
         <div class="container">
-            <a href="#" class="logo">acuis</a>
+            <a href="#" class="logo">
+                <img src="icon.png" alt="acuis" style="height: 32px; margin-right: 8px;">
+                acuis
+            </a>
             <div class="nav-links">
                 <a href="#features">Features</a>
                 <a href="https://github.com/mxskeen/acuis" target="_blank">GitHub</a>
