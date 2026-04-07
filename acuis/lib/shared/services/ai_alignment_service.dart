@@ -10,7 +10,7 @@ import 'scoring/alignment_scorer.dart';
 /// Uses the science-backed AlignmentScorer for comprehensive analysis.
 class AIAlignmentService {
   static const _defaultUrl =
-      'https://integrate.api.nvidia.com/v1/chat/completions';
+      'https://api.openai.com/v1/chat/completions';
   static const _defaultModel = 'mistralai/mistral-small-4-119b-2603';
 
   final String apiKey;

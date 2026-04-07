@@ -10,6 +10,7 @@ import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
 import '../../shared/widgets/tiny_habits_prompt.dart';
 import '../../shared/widgets/ambient_animations.dart';
+import '../../shared/widgets/ai_settings_sheet.dart';
 
 class TodoListScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -220,35 +221,44 @@ class _TodoListScreenState extends State<TodoListScreen> with AutomaticKeepAlive
                     ),
                   ],
                 ),
-                GestureDetector(
-                  onTap: () {
-                    if (_streakService != null) {
-                      showStreakSheet(context, _streakService!);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.local_fire_department_rounded, size: 14, color: _currentStreak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint),
-                        const SizedBox(width: 5),
-                        AnimatedCounter(
-                          value: _currentStreak,
-                          style: GoogleFonts.comfortaa(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink),
-                          duration: const Duration(milliseconds: 600),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Settings icon
+                    const SettingsIconButton(),
+                    const SizedBox(width: 4),
+                    // Streak badge
+                    GestureDetector(
+                      onTap: () {
+                        if (_streakService != null) {
+                          showStreakSheet(context, _streakService!);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.border),
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.local_fire_department_rounded, size: 14, color: _currentStreak > 0 ? const Color(0xFFFF6B35) : AppColors.inkFaint),
+                            const SizedBox(width: 5),
+                            AnimatedCounter(
+                              value: _currentStreak,
+                              style: GoogleFonts.comfortaa(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink),
+                              duration: const Duration(milliseconds: 600),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),

@@ -18,6 +18,7 @@ import '../../shared/services/xp_tracking_service.dart';
 import '../../shared/widgets/celebration_overlay.dart';
 import '../../shared/widgets/quick_add_todo_dialog.dart';
 import '../../shared/widgets/ambient_animations.dart' hide FloatingIcon;
+import '../../shared/widgets/ai_settings_sheet.dart';
 import 'widgets/eisenhower_quadrant.dart';
 import 'widgets/science_backed_growth_chart.dart';
 import 'widgets/smart_radar_chart.dart';
@@ -149,7 +150,13 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
   Future<void> _analyze({bool autoRefresh = false}) async {
     if (!_aiConfig.isAvailable) {
       if (!autoRefresh) {
-        _showSettingsSheet(context);
+        AISettingsSheet.show(
+          context,
+          initialConfig: _aiConfig,
+          onSaved: (config) {
+            setState(() => _aiConfig = config);
+          },
+        );
       }
       return;
     }
@@ -488,9 +495,14 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
                         )
                       : const Icon(Icons.refresh_rounded, color: AppColors.ink),
                 ),
-                IconButton(
-                  onPressed: () => _showSettingsSheet(context),
-                  icon: const Icon(Icons.settings_outlined, color: AppColors.ink),
+                SettingsIconButton(
+                  currentConfig: _aiConfig,
+                  onSettingsChanged: () {
+                    // Reload config from storage
+                    setState(() {
+                      _aiConfig = _storage.loadAIConfigSync();
+                    });
+                  },
                 ),
               ],
             ),
@@ -1064,169 +1076,6 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add, color: Colors.white, size: 22),
-      ),
-    );
-  }
-
-  void _showSettingsSheet(BuildContext context) {
-    final keyCtrl = TextEditingController(text: _aiConfig.customApiKey ?? '');
-    final urlCtrl = TextEditingController(text: _aiConfig.customApiUrl ?? AIConfig.defaultApiUrl);
-    final modelCtrl = TextEditingController(text: _aiConfig.customModel ?? AIConfig.defaultModel);
-    bool useCustom = _aiConfig.useCustomProvider;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            left: 24, right: 24, top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 36,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36, height: 4,
-                    decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                Text('AI Provider Settings',
-                    style: GoogleFonts.comfortaa(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.ink)),
-                const SizedBox(height: 8),
-                Text('Use the built-in AI or configure your own OpenAI-compatible API.',
-                    style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.inkLight, height: 1.4)),
-                const SizedBox(height: 20),
-
-                // Use custom provider toggle
-                Row(
-                  children: [
-                    Checkbox(
-                      value: useCustom,
-                      onChanged: (v) => setModalState(() => useCustom = v ?? false),
-                      activeColor: AppColors.ink,
-                    ),
-                    Expanded(
-                      child: Text('Use custom API provider',
-                          style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                if (useCustom) ...[
-                  // API Key
-                  Text('API Key', style: GoogleFonts.comfortaa(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkLight)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: keyCtrl,
-                    obscureText: true,
-                    style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
-                    decoration: InputDecoration(
-                      hintText: 'Enter API Key',
-                      hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
-                      filled: true,
-                      fillColor: AppColors.bg,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // API URL
-                  Text('API Base URL', style: GoogleFonts.comfortaa(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkLight)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: urlCtrl,
-                    style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
-                    decoration: InputDecoration(
-                      hintText: 'https://api.openai.com/v1/chat/completions',
-                      hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
-                      filled: true,
-                      fillColor: AppColors.bg,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Model
-                  Text('Model ID', style: GoogleFonts.comfortaa(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkLight)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: modelCtrl,
-                    style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
-                    decoration: InputDecoration(
-                      hintText: 'gpt-4o-mini, llama-3.1-70b, etc.',
-                      hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
-                      filled: true,
-                      fillColor: AppColors.bg,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ] else ...[
-                  // Built-in info
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.chip,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: const Color(0xFF43A047), size: 24),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            AIConfig.builtInApiKey != null
-                              ? 'Using built-in AI (no setup needed)'
-                              : 'Built-in AI not available. Add your own API key.',
-                            style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.ink),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: () async {
-                    final config = AIConfig(
-                      customApiKey: keyCtrl.text.trim().isEmpty ? null : keyCtrl.text.trim(),
-                      customApiUrl: urlCtrl.text.trim().isEmpty ? null : urlCtrl.text.trim(),
-                      customModel: modelCtrl.text.trim().isEmpty ? null : modelCtrl.text.trim(),
-                      useCustomProvider: useCustom,
-                    );
-                    await _storage.saveAIConfig(config);
-                    setState(() => _aiConfig = config);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(14)),
-                    child: Center(
-                      child: Text('Save Settings',
-                          style: GoogleFonts.comfortaa(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

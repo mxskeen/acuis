@@ -253,6 +253,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 await xpService.unmarkTodoAsRewarded(todos[i].id);
               }
             },
+            onSettingsChanged: () {
+              // Settings changed - trigger refresh if needed
+              _refreshService.onTodosChanged();
+            },
           ),
           // Goals
           GoalListScreen(
