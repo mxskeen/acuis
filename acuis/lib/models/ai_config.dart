@@ -2,20 +2,19 @@
 ///
 /// Supports OpenAI-compatible APIs (NVIDIA NIM, OpenAI, Groq, Together, etc.)
 class AIConfig {
-  // Default configuration - built-in API for all users
-  // Users can override with their own keys
-  static const String defaultApiUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
-  static const String defaultModel = 'mistralai/mistral-small-4-119b-2603';
-
-  // Built-in API key (injected at build time via --dart-define)
-  // Empty string means no built-in key; null-check in getters handles this
-  static const String builtInApiKeyRaw = String.fromEnvironment(
-    'NVIDIA_API_KEY',
-    defaultValue: '',
+  // Default configuration - uses our secure backend proxy
+  // Backend URL can be configured via --dart-define at build time
+  static const String defaultBackendUrl = String.fromEnvironment(
+    'BACKEND_URL',
+    defaultValue: 'http://localhost:3000',
   );
 
-  // Expose as nullable for cleaner logic - empty string becomes null
-  static const String? builtInApiKey = builtInApiKeyRaw == '' ? null : builtInApiKeyRaw;
+  static const String defaultApiUrl = '$defaultBackendUrl/api/chat/completions';
+  static const String defaultModel = 'mistralai/mistral-small-4-119b-2603';
+
+  // No API key needed for built-in backend - it's handled server-side
+  // This keeps the key secure and never exposed in the client app
+  static const String? builtInApiKey = 'backend-proxy';
 
   final String? customApiKey;
   final String? customApiUrl;

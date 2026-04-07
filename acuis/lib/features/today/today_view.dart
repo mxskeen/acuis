@@ -104,7 +104,10 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
   }
 
   Future<void> _fetchAIFocus() async {
-    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
+    final aiConfig = StorageService().loadAIConfigSync();
+    final apiKey = aiConfig.effectiveApiKey;
+    final apiUrl = aiConfig.effectiveApiUrl;
+    final model = aiConfig.effectiveModel;
 
     // Get pending todos sorted by alignment score
     final pendingTodos = widget.todos
@@ -133,14 +136,20 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
     }
 
     try {
+      // Build headers - only add Authorization if not using backend proxy
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey != 'backend-proxy') {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+
       final response = await http.post(
-        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
+        Uri.parse(apiUrl),
+        headers: headers,
         body: jsonEncode({
-          'model': 'mistralai/mistral-small-4-119b-2603',
+          'model': model,
           'messages': [
             {
               'role': 'system',

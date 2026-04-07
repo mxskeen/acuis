@@ -62,7 +62,11 @@ class _StreakLevelDetailSheetState extends State<_StreakLevelDetailSheet> {
   }
 
   Future<void> _fetchAIMotivation() async {
-    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
+    final aiConfig = StorageService().loadAIConfigSync();
+    final apiKey = aiConfig.effectiveApiKey;
+    final apiUrl = aiConfig.effectiveApiUrl;
+    final model = aiConfig.effectiveModel;
+
     if (apiKey.isEmpty) {
       setState(() {
         _aiMotivation = _getLocalMotivation();
@@ -84,14 +88,20 @@ class _StreakLevelDetailSheetState extends State<_StreakLevelDetailSheet> {
     }).length;
 
     try {
+      // Build headers - only add Authorization if not using backend proxy
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey != 'backend-proxy') {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+
       final response = await http.post(
-        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
+        Uri.parse(apiUrl),
+        headers: headers,
         body: jsonEncode({
-          'model': 'mistralai/mistral-small-4-119b-2603',
+          'model': model,
           'messages': [
             {
               'role': 'system',
@@ -360,7 +370,11 @@ class _VelocityDetailSheetState extends State<_VelocityDetailSheet> {
   }
 
   Future<void> _fetchAIAnalysis() async {
-    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
+    final aiConfig = StorageService().loadAIConfigSync();
+    final apiKey = aiConfig.effectiveApiKey;
+    final apiUrl = aiConfig.effectiveApiUrl;
+    final model = aiConfig.effectiveModel;
+
     final thisWeekVelocity = widget.velocityService.getVelocity(7);
     final lastWeekVelocity = widget.velocityService.getVelocity(14) - thisWeekVelocity;
 
@@ -379,14 +393,20 @@ class _VelocityDetailSheetState extends State<_VelocityDetailSheet> {
     }).length;
 
     try {
+      // Build headers - only add Authorization if not using backend proxy
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey != 'backend-proxy') {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+
       final response = await http.post(
-        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
+        Uri.parse(apiUrl),
+        headers: headers,
         body: jsonEncode({
-          'model': 'mistralai/mistral-small-4-119b-2603',
+          'model': model,
           'messages': [
             {
               'role': 'system',
@@ -674,7 +694,11 @@ class _SMARTDetailSheetState extends State<_SMARTDetailSheet> {
       _aiSuggestion = null;
     });
 
-    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
+    final aiConfig = StorageService().loadAIConfigSync();
+    final apiKey = aiConfig.effectiveApiKey;
+    final apiUrl = aiConfig.effectiveApiUrl;
+    final model = aiConfig.effectiveModel;
+
     if (apiKey.isEmpty) {
       setState(() {
         _aiSuggestion = _getLocalSuggestion(todo);
@@ -684,9 +708,18 @@ class _SMARTDetailSheetState extends State<_SMARTDetailSheet> {
     }
 
     try {
+      // Build headers - only add Authorization if not using backend proxy
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey != 'backend-proxy') {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+
       final response = await http.post(
-        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
-        headers: {
+        Uri.parse(apiUrl),
+        headers: headers,
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
         },
@@ -980,7 +1013,11 @@ class _GoalCoachSheetState extends State<_GoalCoachSheet> {
   }
 
   Future<void> _fetchAICoaching() async {
-    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
+    final aiConfig = StorageService().loadAIConfigSync();
+    final apiKey = aiConfig.effectiveApiKey;
+    final apiUrl = aiConfig.effectiveApiUrl;
+    final model = aiConfig.effectiveModel;
+
     final goalTodos = widget.todos.where((t) => t.goalId == widget.goal.id).toList();
     final completed = goalTodos.where((t) => t.completed).length;
     final prediction = widget.velocityService.predictCompletion(widget.goal, goalTodos);
@@ -994,14 +1031,20 @@ class _GoalCoachSheetState extends State<_GoalCoachSheet> {
     }
 
     try {
+      // Build headers - only add Authorization if not using backend proxy
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey != 'backend-proxy') {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+
       final response = await http.post(
-        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
+        Uri.parse(apiUrl),
+        headers: headers,
         body: jsonEncode({
-          'model': 'mistralai/mistral-small-4-119b-2603',
+          'model': model,
           'messages': [
             {
               'role': 'system',
