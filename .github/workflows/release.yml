@@ -52,10 +52,21 @@ jobs:
         run: flutter build apk --release --dart-define=NVIDIA_API_KEY="$NVIDIA_API_KEY"
         working-directory: acuis
 
+      - name: Build AAB
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: flutter build appbundle --release --dart-define=NVIDIA_API_KEY="$NVIDIA_API_KEY"
+        working-directory: acuis
+
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: acuis/build/app/outputs/flutter-apk/app-release.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: acuis/build/app/outputs/bundle/release/app-release.aab
 
   build-linux:
     name: Linux
@@ -223,6 +234,11 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
+          name: android-aab
+          path: artifacts/android
+
+      - uses: actions/download-artifact@v4
+        with:
           name: linux-build
           path: artifacts/linux
 
@@ -242,12 +258,14 @@ jobs:
           body: |
             Automated build from commit ${{ github.sha }}
 
-            **Android:** Install `app-release.apk` directly (enable "Install from unknown sources").
+            **Android APK:** Install `app-release.apk` directly (enable "Install from unknown sources").
+            **Android AAB:** Upload `app-release.aab` to Google Play Console for Play Store distribution.
             **Linux (Debian/Ubuntu):** `sudo dpkg -i acuis.deb`
             **Linux (Fedora/RHEL):** `sudo rpm -i acuis.rpm`
             **Linux (any distro):** `chmod +x acuis.AppImage && ./acuis.AppImage`
             **Windows:** Extract `acuis-windows.zip` and run `acuis.exe`.
           files: |
             artifacts/android/app-release.apk
+            artifacts/android/app-release.aab
             artifacts/linux/acuis-linux.zip
             artifacts/windows/acuis-windows.zip
