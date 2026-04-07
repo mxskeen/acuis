@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get version number
+        id: version
+        run: |
+          # Use GitHub run number as version code (auto-incrementing)
+          echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -49,13 +55,13 @@ jobs:
       - name: Build APK
         env:
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
-        run: flutter build apk --release --dart-define=BACKEND_URL="$BACKEND_URL"
+        run: flutter build apk --release --build-number=${{ steps.version.outputs.build_number }} --dart-define=BACKEND_URL="$BACKEND_URL"
         working-directory: acuis
 
       - name: Build AAB
         env:
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
-        run: flutter build appbundle --release --dart-define=BACKEND_URL="$BACKEND_URL"
+        run: flutter build appbundle --release --build-number=${{ steps.version.outputs.build_number }} --dart-define=BACKEND_URL="$BACKEND_URL"
         working-directory: acuis
 
       - uses: actions/upload-artifact@v4
