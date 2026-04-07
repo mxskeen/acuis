@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../main.dart';
 import '../../models/ai_config.dart';
 import '../services/storage_service.dart';
@@ -205,11 +206,90 @@ class _AISettingsSheetState extends State<AISettingsSheet> {
                 ),
               ),
             ),
+
+            // Support Development Section
+            const SizedBox(height: 32),
+            Divider(color: AppColors.border),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Icon(Icons.favorite_outline, size: 18, color: AppColors.inkLight),
+                const SizedBox(width: 8),
+                Text('Support Development',
+                    style: GoogleFonts.comfortaa(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('If you enjoy using acuis, consider supporting its development.',
+                style: GoogleFonts.comfortaa(fontSize: 12, color: AppColors.inkLight, height: 1.4)),
+            const SizedBox(height: 16),
+
+            // Support buttons row
+            Row(
+              children: [
+                // Ko-fi (International) - First for higher tips
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _launchUrl('https://ko-fi.com/maskeen'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.local_cafe_outlined, size: 24, color: const Color(0xFF4CAF50)),
+                          const SizedBox(height: 6),
+                          Text('Ko-fi',
+                              style: GoogleFonts.comfortaa(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                          Text('International',
+                              style: GoogleFonts.comfortaa(fontSize: 10, color: AppColors.inkFaint)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Chai4Me (UPI - India)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _launchUrl('https://chai4.me/maskeen'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.coffee_outlined, size: 24, color: const Color(0xFFE65100)),
+                          const SizedBox(height: 6),
+                          Text('Chai4Me',
+                              style: GoogleFonts.comfortaa(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                          Text('UPI',
+                              style: GoogleFonts.comfortaa(fontSize: 10, color: AppColors.inkFaint)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 }
 
