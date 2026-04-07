@@ -720,11 +720,8 @@ class _SMARTDetailSheetState extends State<_SMARTDetailSheet> {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: headers,
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
         body: jsonEncode({
-          'model': 'mistralai/mistral-small-4-119b-2603',
+          'model': model,
           'messages': [
             {
               'role': 'system',
