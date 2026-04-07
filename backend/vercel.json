@@ -11,8 +11,5 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
-  ],
-  "env": {
-    "NVIDIA_API_KEY": "@nvidia_api_key"
-  }
+  ]
 }
