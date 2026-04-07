@@ -245,13 +245,19 @@ Use the create_journey_plan tool.''';
     required List<Map<String, dynamic>> tools,
     required Map<String, dynamic> toolChoice,
   }) async {
+    // Build headers - only add Authorization if not using backend proxy
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    if (apiKey != 'backend-proxy') {
+      headers['Authorization'] = 'Bearer $apiKey';
+    }
+
     final response = await http.post(
       Uri.parse(apiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-        'Accept': 'application/json',
-      },
+      headers: headers,
       body: jsonEncode({
         'model': model,
         'messages': [

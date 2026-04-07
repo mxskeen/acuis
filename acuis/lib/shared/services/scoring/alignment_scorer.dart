@@ -107,13 +107,19 @@ Return ONLY valid JSON:
   /// Call the AI API
   Future<String?> _callAI(String prompt) async {
     try {
+      // Build headers - only add Authorization if not using backend proxy
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      if (apiKey != 'backend-proxy') {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+
       final response = await http.post(
         Uri.parse(apiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-          'Accept': 'application/json',
-        },
+        headers: headers,
         body: jsonEncode({
           'model': model,
           'messages': [

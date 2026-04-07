@@ -48,14 +48,14 @@ jobs:
 
       - name: Build APK
         env:
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-        run: flutter build apk --release --dart-define=NVIDIA_API_KEY="$NVIDIA_API_KEY"
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: flutter build apk --release --dart-define=BACKEND_URL="$BACKEND_URL"
         working-directory: acuis
 
       - name: Build AAB
         env:
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-        run: flutter build appbundle --release --dart-define=NVIDIA_API_KEY="$NVIDIA_API_KEY"
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: flutter build appbundle --release --dart-define=BACKEND_URL="$BACKEND_URL"
         working-directory: acuis
 
       - uses: actions/upload-artifact@v4
@@ -103,8 +103,8 @@ jobs:
 
       - name: Build Linux
         env:
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-        run: flutter build linux --release --dart-define=NVIDIA_API_KEY="$NVIDIA_API_KEY"
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: flutter build linux --release --dart-define=BACKEND_URL="$BACKEND_URL"
         working-directory: acuis
 
       # ── .deb ──────────────────────────────────────────────
@@ -206,8 +206,8 @@ jobs:
 
       - name: Build Windows
         env:
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-        run: flutter build windows --release --dart-define=NVIDIA_API_KEY="$env:NVIDIA_API_KEY"
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: flutter build windows --release --dart-define=BACKEND_URL="$env:BACKEND_URL"
         working-directory: acuis
 
       - name: Zip Windows build
