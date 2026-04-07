@@ -49,7 +49,8 @@ class _AISettingsSheetState extends State<AISettingsSheet> {
   void initState() {
     super.initState();
     _keyCtrl = TextEditingController(text: widget.initialConfig.customApiKey ?? '');
-    _urlCtrl = TextEditingController(text: widget.initialConfig.customApiUrl ?? AIConfig.defaultApiUrl);
+    // Show placeholder if no custom URL set (don't expose built-in backend URL)
+    _urlCtrl = TextEditingController(text: widget.initialConfig.customApiUrl ?? '');
     _modelCtrl = TextEditingController(text: widget.initialConfig.customModel ?? AIConfig.defaultModel);
     _useCustom = widget.initialConfig.useCustomProvider;
   }
