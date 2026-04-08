@@ -67,7 +67,7 @@ class InAppUpdateService {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.system_update, color: AppColors.accent, size: 28),
+            Icon(Icons.system_update, color: AppColors.ink, size: 28),
             const SizedBox(width: 12),
             Text('Update Available',
                 style: GoogleFonts.comfortaa(
@@ -113,7 +113,7 @@ class InAppUpdateService {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
+              backgroundColor: AppColors.ink,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
