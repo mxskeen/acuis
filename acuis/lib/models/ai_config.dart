@@ -3,10 +3,11 @@
 /// Supports OpenAI-compatible APIs (NVIDIA NIM, OpenAI, Groq, Together, etc.)
 class AIConfig {
   // Default configuration - uses our secure backend proxy
-  // Backend URL can be configured via --dart-define at build time
+  // Backend URL is injected at build time via --dart-define=BACKEND_URL
+  // This is set via GitHub Secrets in CI/CD - never hardcoded in source code
   static const String defaultBackendUrl = String.fromEnvironment(
     'BACKEND_URL',
-    defaultValue: 'http://localhost:3000',
+    defaultValue: '',
   );
 
   static const String defaultApiUrl = '$defaultBackendUrl/api/chat/completions';
@@ -52,8 +53,8 @@ class AIConfig {
     return defaultModel;
   }
 
-  /// Check if AI is available (has valid key)
-  bool get isAvailable => effectiveApiKey.isNotEmpty;
+  /// Check if AI is available (has valid key and backend URL)
+  bool get isAvailable => effectiveApiKey.isNotEmpty && defaultBackendUrl.isNotEmpty;
 
   /// Check if using built-in provider
   bool get usingBuiltIn => !useCustomProvider && builtInApiKey != null;
