@@ -16,6 +16,9 @@ if (!NVIDIA_API_KEY) {
   process.exit(1);
 }
 
+// Trust proxy (required for Vercel / reverse proxies)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cors());
@@ -37,7 +40,7 @@ app.get('/health', (req, res) => {
 // Proxy endpoint for NVIDIA API
 app.post('/api/chat/completions', async (req, res) => {
   try {
-    const { model, messages, max_tokens, temperature, stream } = req.body;
+    const { model, messages, max_tokens, temperature, stream, tools, tool_choice, top_p } = req.body;
 
     // Validate request
     if (!messages || !Array.isArray(messages)) {
@@ -58,6 +61,9 @@ app.post('/api/chat/completions', async (req, res) => {
         max_tokens: max_tokens || 512,
         temperature: temperature || 0.7,
         stream: stream || false,
+        ...(top_p != null && { top_p }),
+        ...(tools && { tools }),
+        ...(tool_choice && { tool_choice }),
       }),
     });
 

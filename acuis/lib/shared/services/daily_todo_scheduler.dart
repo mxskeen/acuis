@@ -140,7 +140,8 @@ class DailyTodoScheduler {
     int maxTodos = 5,
   }) async {
     try {
-      final service = SmartTodoGeneratorService(apiKey: apiKey);
+      final aiConfig = StorageService().loadAIConfigSync();
+      final service = SmartTodoGeneratorService(apiKey: apiKey, apiUrl: aiConfig.effectiveApiUrl, model: aiConfig.effectiveModel);
       final result = await service.generateTodos(
         goal: goal,
         existingTodos: [], // New goal, no existing todos
