@@ -14,8 +14,7 @@ import '../../models/journey_plan.dart';
 /// - Gollwitzer: Implementation intentions (if-then plans)
 /// - Fogg: Tiny habit anchors
 class JourneyPlannerService {
-  static const _defaultUrl =
-      'https://integrate.api.nvidia.com/v1/chat/completions';
+  static const _defaultUrl = ''; // Always pass apiUrl from AIConfig
   static const _defaultModel = 'mistralai/mistral-small-4-119b-2603';
 
   final String apiKey;

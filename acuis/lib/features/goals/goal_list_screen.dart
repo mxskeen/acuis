@@ -790,7 +790,8 @@ class _SmartGenerateTasksDialogState extends State<_SmartGenerateTasksDialog> {
 
   Future<void> _generateTasks() async {
     try {
-      final service = SmartTodoGeneratorService(apiKey: widget.apiKey);
+      final aiConfig = StorageService().loadAIConfigSync();
+      final service = SmartTodoGeneratorService(apiKey: widget.apiKey, apiUrl: aiConfig.effectiveApiUrl, model: aiConfig.effectiveModel);
       final result = await service.generateTodos(
         goal: widget.goal,
         existingTodos: widget.existingTodos,
@@ -1178,7 +1179,8 @@ class _NewGoalFlowState extends State<_NewGoalFlow> {
     });
 
     try {
-      final service = JourneyPlannerService(apiKey: widget.apiKey!);
+      final aiConfig = StorageService().loadAIConfigSync();
+      final service = JourneyPlannerService(apiKey: widget.apiKey!, apiUrl: aiConfig.effectiveApiUrl, model: aiConfig.effectiveModel);
       final estimate = await service.estimateDuration(
         goalTitle: _titleCtrl.text.trim(),
         goalDescription: _descCtrl.text.trim(),
@@ -1230,7 +1232,8 @@ class _NewGoalFlowState extends State<_NewGoalFlow> {
       JourneyPlan? plan;
 
       if (widget.apiKey != null && widget.apiKey!.isNotEmpty) {
-        final service = JourneyPlannerService(apiKey: widget.apiKey!);
+        final aiConfig = StorageService().loadAIConfigSync();
+      final service = JourneyPlannerService(apiKey: widget.apiKey!, apiUrl: aiConfig.effectiveApiUrl, model: aiConfig.effectiveModel);
         plan = await service.createJourneyPlan(
           goal: goal,
           selectedDays: _selectedDays,

@@ -799,7 +799,7 @@ class _ReasonSheetState extends State<_ReasonSheet> {
       return;
     }
     try {
-      final service = AITaskGeneratorService(apiKey: widget.apiKey);
+      final service = AITaskGeneratorService(apiKey: widget.apiKey, apiUrl: StorageService().loadAIConfigSync().effectiveApiUrl, model: StorageService().loadAIConfigSync().effectiveModel);
       final reason = await service.fetchTaskReason(widget.todo.title, widget.goal);
       if (reason.isEmpty) {
         setState(() {

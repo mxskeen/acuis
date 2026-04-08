@@ -13,8 +13,7 @@ import '../../models/smart_scores.dart';
 /// - Eisenhower Prioritization
 /// - Velocity-Realistic estimates
 class AITaskGeneratorService {
-  static const _defaultUrl =
-      'https://integrate.api.nvidia.com/v1/chat/completions';
+  static const _defaultUrl = ''; // Always pass apiUrl from AIConfig
   static const _defaultModel = 'mistralai/mistral-small-4-119b-2603';
 
   final String apiKey;

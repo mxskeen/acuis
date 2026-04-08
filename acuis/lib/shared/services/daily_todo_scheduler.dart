@@ -62,7 +62,8 @@ class DailyTodoScheduler {
       final goalTodos = allTodos.where((t) => t.goalId == goal.id).toList();
 
       try {
-        final service = SmartTodoGeneratorService(apiKey: apiKey);
+        final aiConfig = StorageService().loadAIConfigSync();
+        final service = SmartTodoGeneratorService(apiKey: apiKey, apiUrl: aiConfig.effectiveApiUrl, model: aiConfig.effectiveModel);
         final result = await service.generateTodos(
           goal: goal,
           existingTodos: goalTodos,
