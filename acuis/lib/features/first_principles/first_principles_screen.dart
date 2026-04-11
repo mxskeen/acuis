@@ -337,7 +337,7 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
                             : null,
                       ),
                     ],
-                    if (_todos.isNotEmpty && !_isRunning) ...[
+                    if (_todos.isNotEmpty && !_isRunning && widget.onTasksGenerated != null) ...[
                       const SizedBox(height: 24),
                       _buildAddTasksButton(),
                     ],
@@ -402,6 +402,20 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
   }
 
   Widget _buildHeroSection() {
+    // Collapse hero when results are showing to save vertical space
+    if (_hasStarted) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Text(
+          'First Principles',
+          style: GoogleFonts.comfortaa(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -703,24 +717,14 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
                           letterSpacing: 1.2,
                         ),
                       ),
-                      Row(
-                        children: [
-                          Text(
-                            title,
-                            style: GoogleFonts.comfortaa(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                          Text(
-                            ' : $subtitle',
-                            style: GoogleFonts.comfortaa(
-                              fontSize: 13,
-                              color: AppColors.inkLight,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 2),
+                      Text(
+                        '$title — $subtitle',
+                        style: GoogleFonts.comfortaa(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
                       ),
                     ],
                   ),
@@ -769,28 +773,50 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Common assumptions identified:',
-          style: GoogleFonts.comfortaa(
-            fontSize: 11,
-            color: AppColors.inkFaint,
-          ),
+        Row(
+          children: [
+            Icon(Icons.lightbulb_outline_rounded, size: 14, color: const Color(0xFF5C6BC0).withValues(alpha: 0.7)),
+            const SizedBox(width: 6),
+            Text(
+              'Common assumptions identified:',
+              style: GoogleFonts.comfortaa(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkLight,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         ...List.generate(_assumptions.length, (i) {
           final a = _assumptions[i];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF5C6BC0).withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF5C6BC0).withValues(alpha: 0.1)),
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  margin: const EdgeInsets.only(top: 2),
-                  width: 6,
-                  height: 6,
+                  width: 20,
+                  height: 20,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF5C6BC0).withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
+                    color: const Color(0xFF5C6BC0).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${i + 1}',
+                      style: GoogleFonts.comfortaa(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF5C6BC0),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -816,14 +842,21 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Fundamental truths discovered:',
-          style: GoogleFonts.comfortaa(
-            fontSize: 11,
-            color: AppColors.inkFaint,
-          ),
+        Row(
+          children: [
+            Icon(Icons.verified_rounded, size: 14, color: const Color(0xFF43A047).withValues(alpha: 0.7)),
+            const SizedBox(width: 6),
+            Text(
+              'Fundamental truths discovered:',
+              style: GoogleFonts.comfortaa(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkLight,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         ...List.generate(_truths.length, (i) {
           final t = _truths[i];
           return Padding(
@@ -889,28 +922,35 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Actionable solutions built from truths:',
-          style: GoogleFonts.comfortaa(
-            fontSize: 11,
-            color: AppColors.inkFaint,
-          ),
-        ),
-        const SizedBox(height: 4),
         Row(
           children: [
-            const Icon(Icons.edit_outlined, size: 12, color: AppColors.inkFaint),
-            const SizedBox(width: 4),
-            Text(
-              'Tap to edit any step before adding',
-              style: GoogleFonts.comfortaa(
-                fontSize: 10,
-                color: AppColors.inkFaint,
+            Icon(Icons.rocket_launch_rounded, size: 14, color: const Color(0xFFEF6C00).withValues(alpha: 0.8)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Actionable solutions built from truths:',
+                style: GoogleFonts.comfortaa(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkLight,
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 20),
+          child: Text(
+            'Tap the pencil icon to edit before adding',
+            style: GoogleFonts.comfortaa(
+              fontSize: 10,
+              color: AppColors.inkFaint,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         ...List.generate(_taskControllers.length, (i) {
           return _EditableTaskRow(
             index: i,
