@@ -15,7 +15,7 @@ class AIConfig {
 
   // No API key needed for built-in backend - it's handled server-side
   // This keeps the key secure and never exposed in the client app
-  static const String? builtInApiKey = 'backend-proxy';
+  static const String builtInApiKey = 'backend-proxy';
 
   final String? customApiKey;
   final String? customApiUrl;
@@ -34,7 +34,7 @@ class AIConfig {
     if (useCustomProvider && customApiKey != null && customApiKey!.isNotEmpty) {
       return customApiKey!;
     }
-    return builtInApiKey ?? '';
+    return builtInApiKey;
   }
 
   /// Get the effective API URL
@@ -57,7 +57,7 @@ class AIConfig {
   bool get isAvailable => effectiveApiKey.isNotEmpty && defaultBackendUrl.isNotEmpty;
 
   /// Check if using built-in provider
-  bool get usingBuiltIn => !useCustomProvider && builtInApiKey != null;
+  bool get usingBuiltIn => !useCustomProvider;
 
   /// Check if using custom provider
   bool get usingCustom => useCustomProvider && customApiKey != null && customApiKey!.isNotEmpty;

@@ -183,9 +183,7 @@ class _AISettingsSheetState extends State<AISettingsSheet> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        AIConfig.builtInApiKey != null
-                          ? 'Using built-in AI (no setup needed)'
-                          : 'Built-in AI not available. Add your own API key.',
+                        'Using built-in AI (no setup needed)',
                         style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.ink),
                       ),
                     ),

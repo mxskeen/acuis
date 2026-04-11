@@ -68,10 +68,10 @@ class _ImpactQuadrantState extends State<ImpactQuadrant> with SingleTickerProvid
             child: Stack(
               children: [
                 // Labels layer
-                Positioned(top: 16, left: 16, child: _Qlabel('To-Do\nPriority')),
-                Positioned(top: 16, right: 16, child: _Qlabel('Done\nBig Wins', alignRight: true)),
-                Positioned(bottom: 16, left: 16, child: _Qlabel('To-Do\nLow Impact')),
-                Positioned(bottom: 16, right: 16, child: _Qlabel('Done\nBusywork', alignRight: true)),
+                Positioned(top: 16, left: 16, child: _qLabel('To-Do\nPriority')),
+                Positioned(top: 16, right: 16, child: _qLabel('Done\nBig Wins', alignRight: true)),
+                Positioned(bottom: 16, left: 16, child: _qLabel('To-Do\nLow Impact')),
+                Positioned(bottom: 16, right: 16, child: _qLabel('Done\nBusywork', alignRight: true)),
                 // Canvas layer
                 AnimatedBuilder(
                   animation: _anim,
@@ -91,7 +91,7 @@ class _ImpactQuadrantState extends State<ImpactQuadrant> with SingleTickerProvid
     );
   }
 
-  Widget _Qlabel(String text, {bool alignRight = false}) {
+  Widget _qLabel(String text, {bool alignRight = false}) {
     return Text(text,
         textAlign: alignRight ? TextAlign.right : TextAlign.left,
         style: GoogleFonts.comfortaa(

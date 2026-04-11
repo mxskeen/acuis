@@ -11,6 +11,7 @@ import '../../shared/widgets/streak_sheet.dart';
 import '../../shared/widgets/ai_settings_sheet.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../shared/widgets/deconstruct_dialog.dart';
 
 /// Today View - The daily command center
 ///
@@ -496,6 +497,10 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
                 _buildTodayTasks(pendingTodos),
                 const SizedBox(height: 24),
 
+                // First Principles — Deconstruct any idea
+                _buildFirstPrinciplesCard(),
+                const SizedBox(height: 24),
+
                 // Quick Actions
                 _buildQuickActions(),
               ],
@@ -887,6 +892,112 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFirstPrinciplesCard() {
+    return GestureDetector(
+      onTap: _showDeconstructDialog,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.ink.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5C6BC0).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.psychology, size: 24, color: Color(0xFF5C6BC0)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'First Principles',
+                    style: GoogleFonts.comfortaa(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Deconstruct any goal. Challenge assumptions. Find a leaner path.',
+                    style: GoogleFonts.comfortaa(
+                      fontSize: 12,
+                      color: AppColors.inkLight,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.inkFaint),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeconstructDialog() {
+    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
+
+    if (apiKey.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('API Key Required',
+              style: GoogleFonts.comfortaa(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink)),
+          content: Text('Set your API key in the Alignment tab to use First Principles.',
+              style: GoogleFonts.comfortaa(
+                  fontSize: 13, color: AppColors.inkLight, height: 1.4)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('OK',
+                  style: GoogleFonts.comfortaa(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => DeconstructDialog(
+        apiKey: apiKey,
+        onTasksGenerated: (todos) {
+          for (final todo in todos) {
+            widget.onAddTodo(todo);
+          }
+          Navigator.pop(ctx);
+        },
       ),
     );
   }

@@ -11,6 +11,7 @@ import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
 import '../../shared/widgets/ai_settings_sheet.dart';
+import '../../shared/widgets/deconstruct_dialog.dart';
 
 class GoalListScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -227,6 +228,29 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
     );
   }
 
+  void _showDeconstructDialog(int goalIndex) {
+    final goal = goals[goalIndex];
+    final apiKey = _storage.loadAIConfigSync().effectiveApiKey;
+
+    if (apiKey.isEmpty) {
+      _showApiKeyRequiredDialog();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => DeconstructDialog(
+        goal: goal,
+        apiKey: apiKey,
+        onTasksGenerated: (todos) {
+          widget.onAddTodos(todos);
+          Navigator.pop(ctx);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -383,6 +407,7 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
           goal: goals[i],
           onLongPress: () => _showEditSheet(i),
           onGenerateTasks: () => _showGenerateTasksDialog(i),
+          onDeconstruct: () => _showDeconstructDialog(i),
         ),
       );
 
@@ -541,10 +566,12 @@ class _GoalCard extends StatelessWidget {
   final Goal goal;
   final VoidCallback onLongPress;
   final VoidCallback onGenerateTasks;
+  final VoidCallback onDeconstruct;
   const _GoalCard({
     required this.goal,
     required this.onLongPress,
     required this.onGenerateTasks,
+    required this.onDeconstruct,
   });
 
   @override
@@ -606,27 +633,54 @@ class _GoalCard extends StatelessWidget {
                       fontSize: 13, color: AppColors.inkLight, height: 1.55)),
             ],
             const SizedBox(height: 12),
-            GestureDetector(
-              onTap: onGenerateTasks,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.ink,
-                  borderRadius: BorderRadius.circular(10),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: onGenerateTasks,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text('Generate Steps',
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
-                    const SizedBox(width: 6),
-                    Text('Generate Steps',
-                        style: GoogleFonts.comfortaa(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white)),
-                  ],
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: onDeconstruct,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.ink, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.psychology, size: 14, color: AppColors.ink),
+                        const SizedBox(width: 6),
+                        Text('Deconstruct',
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink)),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

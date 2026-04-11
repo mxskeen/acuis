@@ -40,7 +40,7 @@ class WallpaperBlurEngine {
 
       return blurredFile.path;
     } catch (e) {
-      print('Error applying blur: $e');
+      debugPrint('Error applying blur: $e');
       rethrow;
     }
   }
@@ -57,7 +57,7 @@ class WallpaperBlurEngine {
       final blurredImagePath = await applyBlurToImage(originalImagePath, blurIntensity);
       return await _wallpaperService.setWallpaper(blurredImagePath);
     } catch (e) {
-      print('Error updating wallpaper: $e');
+      debugPrint('Error updating wallpaper: $e');
       return false;
     }
   }

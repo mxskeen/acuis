@@ -293,7 +293,7 @@ Return ONLY valid JSON:
     double score = 40.0;
 
     final titleWords = title.toLowerCase().split(RegExp(r'\s+'));
-    final goalText = '${goalTitle} ${goalDesc}'.toLowerCase();
+    final goalText = '$goalTitle $goalDesc'.toLowerCase();
 
     // Word overlap scoring
     int matches = 0;
@@ -344,9 +344,13 @@ Return ONLY valid JSON:
     if (context.hasVelocityData) {
       // Can user reasonably complete this?
       final effortMinutes = todo.effortLevel.estimatedMinutes;
-      if (effortMinutes <= 30) score += 20;
-      else if (effortMinutes <= 60) score += 10;
-      else if (effortMinutes > 120) score -= 15;
+      if (effortMinutes <= 30) {
+        score += 20;
+      } else if (effortMinutes <= 60) {
+        score += 10;
+      } else if (effortMinutes > 120) {
+        score -= 15;
+      }
     }
 
     // Consider goal urgency
