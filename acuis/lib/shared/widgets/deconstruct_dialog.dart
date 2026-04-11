@@ -57,6 +57,7 @@ class _DeconstructDialogState extends State<DeconstructDialog> {
   @override
   void initState() {
     super.initState();
+    _titleCtrl.addListener(_onTextChanged);
     if (_isStandalone) {
       _step = -1;
       _isLoading = false;
@@ -65,8 +66,14 @@ class _DeconstructDialogState extends State<DeconstructDialog> {
     }
   }
 
+  void _onTextChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
   @override
   void dispose() {
+    _titleCtrl.removeListener(_onTextChanged);
     _titleCtrl.dispose();
     _descCtrl.dispose();
     for (final c in _taskControllers) {
@@ -111,7 +118,8 @@ class _DeconstructDialogState extends State<DeconstructDialog> {
   }
 
   Future<void> _loadTruths() async {
-    final challenged = _assumptions.where((a) => a.isChallenged).toList();
+    // Send assumptions the user KEPT (not challenged/removed) to find truths
+    final kept = _assumptions.where((a) => !a.isChallenged).toList();
 
     setState(() {
       _isLoading = true;
@@ -129,7 +137,7 @@ class _DeconstructDialogState extends State<DeconstructDialog> {
         goal: widget.goal,
         title: _isStandalone ? _titleCtrl.text.trim() : null,
         description: _isStandalone ? _descCtrl.text.trim() : null,
-        challengedAssumptions: challenged,
+        challengedAssumptions: kept,
       );
 
       if (mounted) {
@@ -241,7 +249,7 @@ class _DeconstructDialogState extends State<DeconstructDialog> {
   }
 
   String get _stepTitle => switch (_step) {
-        -1 => "What's your goal?",
+        -1 => 'What are you thinking about?',
         0 => 'Identify Assumptions',
         1 => 'Find Truths',
         2 => 'Create Solutions',
@@ -249,7 +257,7 @@ class _DeconstructDialogState extends State<DeconstructDialog> {
       };
 
   String get _stepSubtitle => switch (_step) {
-        -1 => 'Type anything you want to deconstruct',
+        -1 => 'A goal, belief, problem, or idea — anything you want to rethink from scratch',
         0 => 'List common beliefs and assumptions. Identify what you think you know.',
         1 => 'Use Socratic questioning. Challenge assumptions until you reach fundamental truths.',
         2 => 'Reconstruct the problem. Use truths as building blocks for innovation.',
@@ -352,7 +360,7 @@ class _DeconstructDialogState extends State<DeconstructDialog> {
           autofocus: true,
           style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
           decoration: InputDecoration(
-            hintText: 'e.g. Learn French in 3 months',
+            hintText: 'e.g. I need to go to gym to get fit',
             hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
             filled: true,
             fillColor: AppColors.bg,
@@ -369,7 +377,7 @@ class _DeconstructDialogState extends State<DeconstructDialog> {
           maxLines: 2,
           style: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.ink),
           decoration: InputDecoration(
-            hintText: 'More context (optional)',
+            hintText: 'What do you believe about this? (optional)',
             hintStyle: GoogleFonts.comfortaa(fontSize: 14, color: AppColors.inkFaint),
             filled: true,
             fillColor: AppColors.bg,
