@@ -478,6 +478,8 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
               // New user onboarding OR regular content
               if (_isNewUser) ...[
                 _buildNewUserTutorial(),
+                const SizedBox(height: 20),
+                _buildFirstPrinciplesCard(),
               ] else ...[
                 // Streak & Quick Stats
                 _buildStatsRow(completedToday),
@@ -959,13 +961,7 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => FirstPrinciplesScreen(
-          onTasksGenerated: (todos) {
-            for (final todo in todos) {
-              widget.onAddTodo(todo);
-            }
-          },
-        ),
+        builder: (_) => const FirstPrinciplesScreen(),
       ),
     );
   }
