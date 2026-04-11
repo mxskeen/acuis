@@ -22,18 +22,28 @@ class FirstPrinciplesService {
   });
 
   /// Step 1: Identify assumptions the user is making about how to achieve this goal
-  Future<List<Assumption>> identifyAssumptions(Goal goal) async {
-    final timeframe = goal.type == GoalType.shortTerm
-        ? 'within 1-3 months'
-        : 'over 6-12 months';
+  ///
+  /// Accepts either a [Goal] object or free-text [title] + [description].
+  Future<List<Assumption>> identifyAssumptions({
+    Goal? goal,
+    String? title,
+    String? description,
+  }) async {
+    final effectiveTitle = goal?.title ?? title ?? '';
+    final effectiveDesc = goal?.description ?? description ?? '';
+    final timeframe = goal != null
+        ? (goal.type == GoalType.shortTerm
+            ? 'within 1-3 months'
+            : 'over 6-12 months')
+        : 'unspecified';
 
     final prompt = '''
 You are a first principles thinking coach. The user has this goal:
 
-GOAL: ${goal.title}
-DESCRIPTION: ${goal.description}
+GOAL: $effectiveTitle
+DESCRIPTION: $effectiveDesc
 TIMEFRAME: $timeframe
-${goal.targetDate != null ? 'TARGET: ${goal.daysRemaining} days remaining' : ''}
+${goal?.targetDate != null ? 'TARGET: ${goal!.daysRemaining} days remaining' : ''}
 
 List 4-5 assumptions the user is LIKELY making about HOW to achieve this goal.
 These should be common beliefs that may or may not be true — things most people
@@ -61,19 +71,24 @@ Return ONLY valid JSON (no markdown, no explanation):
   }
 
   /// Step 2: Challenge assumptions to find fundamental truths
-  Future<List<Truth>> findTruths(
-    Goal goal,
-    List<Assumption> challengedAssumptions,
-  ) async {
+  Future<List<Truth>> findTruths({
+    Goal? goal,
+    String? title,
+    String? description,
+    required List<Assumption> challengedAssumptions,
+  }) async {
     if (challengedAssumptions.isEmpty) return [];
+
+    final effectiveTitle = goal?.title ?? title ?? '';
+    final effectiveDesc = goal?.description ?? description ?? '';
 
     final challengedList = challengedAssumptions
         .map((a) => '- "${a.text}"')
         .join('\n');
 
     final prompt = '''
-The user has this goal: ${goal.title}
-${goal.description.isNotEmpty ? 'Description: ${goal.description}' : ''}
+The user has this goal: $effectiveTitle
+${effectiveDesc.isNotEmpty ? 'Description: $effectiveDesc' : ''}
 
 They challenged these assumptions:
 $challengedList
@@ -104,38 +119,44 @@ Return ONLY valid JSON (no markdown, no explanation):
     }
   }
 
-  /// Step 3: Reconstruct a minimal plan from confirmed truths
-  Future<List<ReconstructedTask>> reconstructPlan(
-    Goal goal,
-    List<Truth> confirmedTruths,
-  ) async {
+  /// Step 3: Create solutions by reconstructing the problem from confirmed truths
+  Future<List<ReconstructedTask>> reconstructPlan({
+    Goal? goal,
+    String? title,
+    String? description,
+    required List<Truth> confirmedTruths,
+  }) async {
     if (confirmedTruths.isEmpty) return [];
+
+    final effectiveTitle = goal?.title ?? title ?? '';
+    final effectiveDesc = goal?.description ?? description ?? '';
 
     final truthsList = confirmedTruths
         .map((t) => '- ${t.text}: ${t.explanation}')
         .join('\n');
 
     final prompt = '''
-Based on these confirmed fundamental truths:
+These are the confirmed fundamental truths:
 $truthsList
 
-Generate 5 tiny, actionable tasks for the goal: ${goal.title}
-${goal.description.isNotEmpty ? 'Context: ${goal.description}' : ''}
+Now RECONSTRUCT the problem. Use these truths as building blocks for innovation.
+Generate 5 actionable solutions for: $effectiveTitle
+${effectiveDesc.isNotEmpty ? 'Context: $effectiveDesc' : ''}
 
 RULES:
-1. Each task follows ONLY from the confirmed truths above — ignore conventional approaches
-2. Start with the SMALLEST possible action (BJ Fogg Tiny Habits principle)
-3. Progressive difficulty:
-   - Tasks 1-2: Tiny/easy (build momentum, sense of accomplishment)
-   - Tasks 3-4: Medium effort (real progress toward the goal)
-   - Task 5: Stretch goal (ambitious but achievable)
-4. Each task starts with a verb
-5. Each task is specific enough to do today
+1. Each solution is built ONLY from the confirmed truths — discard conventional approaches
+2. Think like an innovator: what's the SIMPLEST path that these truths enable?
+3. Start with the SMALLEST possible action (BJ Fogg Tiny Habits principle)
+4. Progressive ambition:
+   - Solutions 1-2: Tiny/easy (build momentum, prove the approach works)
+   - Solutions 3-4: Medium effort (real breakthrough using truths as levers)
+   - Solution 5: Stretch goal (ambitious innovation made possible by these truths)
+5. Each solution starts with a verb and is specific enough to do today
 
 Return ONLY valid JSON array (no markdown, no explanation):
 [
   {
-    "title": "<action-oriented task>",
+    "title": "<action-oriented solution>",
     "reason": "<why this follows from the truths>",
     "effort": "<tiny|small|medium|large>",
     "best_time": "<morning|afternoon|evening|anytime>",
@@ -156,7 +177,7 @@ Return ONLY valid JSON array (no markdown, no explanation):
   /// Convert reconstructed tasks to Todo objects for the existing system
   List<Todo> createTodosFromReconstruction(
     List<ReconstructedTask> tasks,
-    String goalId,
+    String? goalId,
   ) {
     return tasks.asMap().entries.map((entry) {
       final task = entry.value;
