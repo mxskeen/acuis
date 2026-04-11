@@ -230,7 +230,7 @@ Return ONLY valid JSON array (no markdown, no explanation):
             {
               'role': 'system',
               'content':
-                  'You are a first principles thinking coach. You help users rethink any idea, belief, or goal from scratch — identifying hidden assumptions, finding fundamental truths, and building lean action plans. Always respond with valid JSON only.'
+                  'You are a first principles thinking coach. You help users rethink any idea, belief, or goal from scratch — identifying hidden assumptions, finding fundamental truths, and building lean action plans. Always respond with valid JSON only. Never wrap your response in markdown code blocks.'
             },
             {'role': 'user', 'content': prompt}
           ],
@@ -245,13 +245,16 @@ Return ONLY valid JSON array (no markdown, no explanation):
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final content = data['choices'][0]['message']['content'] as String;
-        debugPrint('[FirstPrinciples] Got AI response (${content.length} chars)');
+        debugPrint('[FirstPrinciples] Raw AI response:\n$content');
         return content;
       }
-      debugPrint('[FirstPrinciples] API error: ${response.statusCode} — ${response.body.substring(0, (response.body.length > 200) ? 200 : response.body.length)}');
+      final errorBody = response.body.length > 300
+          ? response.body.substring(0, 300)
+          : response.body;
+      debugPrint('[FirstPrinciples] API error ${response.statusCode}: $errorBody');
       return null;
     } catch (e) {
-      debugPrint('[FirstPrinciples] Exception: $e');
+      debugPrint('[FirstPrinciples] Exception in _callAI: $e');
       return null;
     }
   }
@@ -259,16 +262,34 @@ Return ONLY valid JSON array (no markdown, no explanation):
   List<Assumption> _parseAssumptions(String response) {
     try {
       final jsonStr = _extractJson(response);
-      final json = jsonDecode(jsonStr);
-      final List<dynamic> assumptions = json['assumptions'] ?? [];
+      debugPrint('[FirstPrinciples] Extracted JSON for assumptions: $jsonStr');
+      final decoded = jsonDecode(jsonStr);
+
+      // Handle both {"assumptions": [...]} and direct [...]
+      List<dynamic> assumptions;
+      if (decoded is Map) {
+        assumptions = decoded['assumptions'] as List<dynamic>? ?? [];
+      } else if (decoded is List) {
+        assumptions = decoded;
+      } else {
+        debugPrint('[FirstPrinciples] Unexpected JSON type: ${decoded.runtimeType}');
+        return [];
+      }
+
       return assumptions
-          .map((a) => Assumption(
-                text: a['text'] as String? ?? '',
-              ))
+          .map((a) {
+            if (a is Map) {
+              return Assumption(text: a['text'] as String? ?? '');
+            } else if (a is String) {
+              return Assumption(text: a);
+            }
+            return Assumption(text: '');
+          })
           .where((a) => a.text.isNotEmpty)
           .toList();
     } catch (e) {
       debugPrint('[FirstPrinciples] Parse assumptions failed: $e');
+      debugPrint('[FirstPrinciples] Response was: $response');
       return [];
     }
   }
@@ -276,17 +297,36 @@ Return ONLY valid JSON array (no markdown, no explanation):
   List<Truth> _parseTruths(String response) {
     try {
       final jsonStr = _extractJson(response);
-      final json = jsonDecode(jsonStr);
-      final List<dynamic> truths = json['truths'] ?? [];
+      debugPrint('[FirstPrinciples] Extracted JSON for truths: $jsonStr');
+      final decoded = jsonDecode(jsonStr);
+
+      List<dynamic> truths;
+      if (decoded is Map) {
+        truths = decoded['truths'] as List<dynamic>? ?? [];
+      } else if (decoded is List) {
+        truths = decoded;
+      } else {
+        debugPrint('[FirstPrinciples] Unexpected JSON type: ${decoded.runtimeType}');
+        return [];
+      }
+
       return truths
-          .map((t) => Truth(
+          .map((t) {
+            if (t is Map) {
+              return Truth(
                 text: t['text'] as String? ?? '',
                 explanation: t['explanation'] as String? ?? '',
-              ))
+              );
+            } else if (t is String) {
+              return Truth(text: t, explanation: '');
+            }
+            return Truth(text: '', explanation: '');
+          })
           .where((t) => t.text.isNotEmpty)
           .toList();
     } catch (e) {
       debugPrint('[FirstPrinciples] Parse truths failed: $e');
+      debugPrint('[FirstPrinciples] Response was: $response');
       return [];
     }
   }
@@ -294,13 +334,29 @@ Return ONLY valid JSON array (no markdown, no explanation):
   List<ReconstructedTask> _parseReconstructedTasks(String response) {
     try {
       final jsonStr = _extractJson(response);
-      final List<dynamic> tasks = jsonDecode(jsonStr);
+      debugPrint('[FirstPrinciples] Extracted JSON for tasks: $jsonStr');
+      final decoded = jsonDecode(jsonStr);
+
+      List<dynamic> tasks;
+      if (decoded is Map) {
+        tasks = decoded['tasks'] as List<dynamic>? ??
+            decoded['steps'] as List<dynamic>? ??
+            decoded['solutions'] as List<dynamic>? ??
+            [];
+      } else if (decoded is List) {
+        tasks = decoded;
+      } else {
+        debugPrint('[FirstPrinciples] Unexpected JSON type: ${decoded.runtimeType}');
+        return [];
+      }
+
       return tasks
           .map((t) => ReconstructedTask.fromJson(t as Map<String, dynamic>))
           .where((t) => t.title.isNotEmpty)
           .toList();
     } catch (e) {
       debugPrint('[FirstPrinciples] Parse tasks failed: $e');
+      debugPrint('[FirstPrinciples] Response was: $response');
       return [];
     }
   }
@@ -316,20 +372,39 @@ Return ONLY valid JSON array (no markdown, no explanation):
     };
   }
 
+  /// Extract JSON from AI response — handles code blocks, preamble text, etc.
   String _extractJson(String content) {
-    // Try to find JSON in code blocks first
-    final codeBlock = RegExp(r'```(?:json)?\s*([\s\S]*?)```');
-    final match = codeBlock.firstMatch(content);
-    if (match != null) return match.group(1)!.trim();
+    var text = content.trim();
 
-    // Try to find raw JSON array
-    final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(content);
-    if (jsonMatch != null) return jsonMatch.group(0)!;
+    // Strip markdown code blocks if present
+    if (text.contains('```')) {
+      text = text.replaceAll('```json', '').replaceAll('```', '').trim();
+      debugPrint('[FirstPrinciples] Stripped code blocks');
+    }
 
-    // Try to find JSON object
-    final objectMatch = RegExp(r'\{[\s\S]*\}').firstMatch(content);
-    if (objectMatch != null) return objectMatch.group(0)!;
+    // Find first { or [ and last matching } or ]
+    final firstBrace = text.indexOf('{');
+    final firstBracket = text.indexOf('[');
 
-    return content.trim();
+    if (firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)) {
+      final lastBrace = text.lastIndexOf('}');
+      if (lastBrace > firstBrace) {
+        final extracted = text.substring(firstBrace, lastBrace + 1);
+        debugPrint('[FirstPrinciples] Extracted JSON object (${extracted.length} chars)');
+        return extracted;
+      }
+    }
+
+    if (firstBracket >= 0) {
+      final lastBracket = text.lastIndexOf(']');
+      if (lastBracket > firstBracket) {
+        final extracted = text.substring(firstBracket, lastBracket + 1);
+        debugPrint('[FirstPrinciples] Extracted JSON array (${extracted.length} chars)');
+        return extracted;
+      }
+    }
+
+    debugPrint('[FirstPrinciples] No JSON found, returning raw (${text.length} chars)');
+    return text;
   }
 }
