@@ -89,7 +89,6 @@ class VelocityService {
 
     // Get velocity (7-day rolling average)
     final velocity = getVelocity(7);
-    final weightedVelocity = getWeightedVelocity(7);
 
     if (velocity <= 0) {
       return VelocityPrediction.insufficientData();
@@ -97,10 +96,6 @@ class VelocityService {
 
     // Calculate remaining work
     final remainingTasks = remainingTodos.length;
-    final remainingPoints = remainingTodos.fold<int>(
-      0,
-      (sum, t) => sum + (t.estimatedEffort ?? 3),
-    );
 
     // Calculate expected days
     final avgDays = remainingTasks / velocity;
@@ -285,9 +280,13 @@ class VelocityService {
     };
 
     // Adjust for prediction horizon (further = less confident)
-    if (expectedDays > 30) base -= 20;
-    else if (expectedDays > 14) base -= 10;
-    else if (expectedDays > 7) base -= 5;
+    if (expectedDays > 30) {
+      base -= 20;
+    } else if (expectedDays > 14) {
+      base -= 10;
+    } else if (expectedDays > 7) {
+      base -= 5;
+    }
 
     return base.clamp(5, 95);
   }

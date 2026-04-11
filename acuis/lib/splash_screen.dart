@@ -15,10 +15,8 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   late final AnimationController _illustrationCtrl;
-  late final AnimationController _progressCtrl;
   late final Animation<double> _fadeIn;
   late final Animation<double> _slideUp;
-  late final Animation<double> _progressAnim;
 
   double _progress = 0.0;
   String _statusText = 'Starting up...';
@@ -32,16 +30,10 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 800),
     );
 
-    _progressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-
     _fadeIn = CurvedAnimation(parent: _illustrationCtrl, curve: Curves.easeOut);
     _slideUp = Tween<double>(begin: 30, end: 0).animate(
       CurvedAnimation(parent: _illustrationCtrl, curve: Curves.easeOutCubic),
     );
-    _progressAnim = CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOut);
 
     _illustrationCtrl.forward();
     _runInit();
@@ -69,7 +61,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _illustrationCtrl.dispose();
-    _progressCtrl.dispose();
     super.dispose();
   }
 
@@ -115,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen>
                               tween: Tween(begin: 0, end: _progress),
                               duration: const Duration(milliseconds: 400),
                               curve: Curves.easeOutCubic,
-                              builder: (_, value, __) => LinearProgressIndicator(
+                              builder: (_, value, _) => LinearProgressIndicator(
                                 value: value,
                                 minHeight: 3,
                                 backgroundColor: AppColors.border,
@@ -177,7 +168,7 @@ class _FloatingIllustrationState extends State<_FloatingIllustration>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _float,
-      builder: (_, __) => Transform.translate(
+      builder: (_, _) => Transform.translate(
         offset: Offset(0, _float.value),
         child: Image.asset(
           'assets/splash_screen.png',

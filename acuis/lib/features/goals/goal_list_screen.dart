@@ -9,8 +9,10 @@ import '../../shared/services/journey_planner_service.dart';
 import '../../shared/services/smart_todo_generator_service.dart';
 import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
+import '../../shared/services/first_principles_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
 import '../../shared/widgets/ai_settings_sheet.dart';
+import '../../models/deconstruction_result.dart';
 
 class GoalListScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -227,6 +229,29 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
     );
   }
 
+  void _showDeconstructDialog(int goalIndex) {
+    final goal = goals[goalIndex];
+    final apiKey = _storage.loadAIConfigSync().effectiveApiKey;
+
+    if (apiKey.isEmpty) {
+      _showApiKeyRequiredDialog();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _DeconstructDialog(
+        goal: goal,
+        apiKey: apiKey,
+        onTasksGenerated: (todos) {
+          widget.onAddTodos(todos);
+          Navigator.pop(ctx);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -383,6 +408,7 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
           goal: goals[i],
           onLongPress: () => _showEditSheet(i),
           onGenerateTasks: () => _showGenerateTasksDialog(i),
+          onDeconstruct: () => _showDeconstructDialog(i),
         ),
       );
 
@@ -541,10 +567,12 @@ class _GoalCard extends StatelessWidget {
   final Goal goal;
   final VoidCallback onLongPress;
   final VoidCallback onGenerateTasks;
+  final VoidCallback onDeconstruct;
   const _GoalCard({
     required this.goal,
     required this.onLongPress,
     required this.onGenerateTasks,
+    required this.onDeconstruct,
   });
 
   @override
@@ -606,27 +634,54 @@ class _GoalCard extends StatelessWidget {
                       fontSize: 13, color: AppColors.inkLight, height: 1.55)),
             ],
             const SizedBox(height: 12),
-            GestureDetector(
-              onTap: onGenerateTasks,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.ink,
-                  borderRadius: BorderRadius.circular(10),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: onGenerateTasks,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text('Generate Steps',
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
-                    const SizedBox(width: 6),
-                    Text('Generate Steps',
-                        style: GoogleFonts.comfortaa(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white)),
-                  ],
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: onDeconstruct,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.ink, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.psychology, size: 14, color: AppColors.ink),
+                        const SizedBox(width: 6),
+                        Text('Deconstruct',
+                            style: GoogleFonts.comfortaa(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink)),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -1107,6 +1162,499 @@ class _EditableTaskRowState extends State<_EditableTaskRow> {
         ],
       ),
     );
+  }
+}
+
+// ── First Principles Deconstruct Dialog (3-step wizard) ──────────────────────
+
+class _DeconstructDialog extends StatefulWidget {
+  final Goal goal;
+  final String apiKey;
+  final void Function(List<Todo>) onTasksGenerated;
+
+  const _DeconstructDialog({
+    required this.goal,
+    required this.apiKey,
+    required this.onTasksGenerated,
+  });
+
+  @override
+  State<_DeconstructDialog> createState() => _DeconstructDialogState();
+}
+
+class _DeconstructDialogState extends State<_DeconstructDialog> {
+  int _step = 0; // 0: assumptions, 1: truths, 2: tasks
+  bool _isLoading = true;
+  String? _error;
+
+  // Step 0: Assumptions
+  List<Assumption> _assumptions = [];
+
+  // Step 1: Truths
+  List<Truth> _truths = [];
+
+  // Step 2: Reconstructed tasks
+  List<Todo> _reconstructedTodos = [];
+  List<TextEditingController> _taskControllers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAssumptions();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _taskControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _loadAssumptions() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final aiConfig = StorageService().loadAIConfigSync();
+      final service = FirstPrinciplesService(
+        apiKey: widget.apiKey,
+        apiUrl: aiConfig.effectiveApiUrl,
+        model: aiConfig.effectiveModel,
+      );
+      final assumptions = await service.identifyAssumptions(widget.goal);
+
+      if (mounted) {
+        setState(() {
+          _assumptions = assumptions;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadTruths() async {
+    // Only challenge assumptions the user didn't remove
+    final challenged = _assumptions.where((a) => a.isChallenged).toList();
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final aiConfig = StorageService().loadAIConfigSync();
+      final service = FirstPrinciplesService(
+        apiKey: widget.apiKey,
+        apiUrl: aiConfig.effectiveApiUrl,
+        model: aiConfig.effectiveModel,
+      );
+      final truths = await service.findTruths(widget.goal, challenged);
+
+      if (mounted) {
+        setState(() {
+          _truths = truths;
+          _isLoading = false;
+          _step = 1;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadReconstructedTasks() async {
+    final confirmed = _truths.where((t) => t.isConfirmed).toList();
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final aiConfig = StorageService().loadAIConfigSync();
+      final service = FirstPrinciplesService(
+        apiKey: widget.apiKey,
+        apiUrl: aiConfig.effectiveApiUrl,
+        model: aiConfig.effectiveModel,
+      );
+      final tasks = await service.reconstructPlan(widget.goal, confirmed);
+      final todos = service.createTodosFromReconstruction(tasks, widget.goal.id);
+
+      if (mounted) {
+        setState(() {
+          _reconstructedTodos = todos;
+          _taskControllers = todos.map((t) => TextEditingController(text: t.title)).toList();
+          _isLoading = false;
+          _step = 2;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _addTasks() {
+    final editedTodos = <Todo>[];
+    for (int i = 0; i < _reconstructedTodos.length; i++) {
+      final original = _reconstructedTodos[i];
+      final editedTitle = _taskControllers[i].text.trim();
+      if (editedTitle.isNotEmpty) {
+        editedTodos.add(original.copyWith(title: editedTitle));
+      }
+    }
+    widget.onTasksGenerated(editedTodos);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          const Icon(Icons.psychology, size: 20, color: AppColors.ink),
+          const SizedBox(width: 8),
+          Text(_stepTitle,
+              style: GoogleFonts.comfortaa(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink)),
+        ],
+      ),
+      content: _isLoading
+          ? _buildLoading()
+          : _error != null
+              ? _buildError()
+              : _buildStepContent(),
+      actions: _isLoading
+          ? null
+          : _error != null
+              ? [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Close',
+                        style: GoogleFonts.comfortaa(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink)),
+                  ),
+                ]
+              : _buildActions(),
+    );
+  }
+
+  String get _stepTitle => switch (_step) {
+        0 => 'Identify Assumptions',
+        1 => 'Find Truths',
+        2 => 'Reconstruct Plan',
+        _ => 'Deconstruct',
+      };
+
+  String get _stepSubtitle => switch (_step) {
+        0 => 'What are you assuming about how to achieve this?',
+        1 => 'Strip away convention. What\'s actually true?',
+        2 => 'The leanest path based on truths only',
+        _ => '',
+      };
+
+  Widget _buildLoading() => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: AppColors.ink),
+          const SizedBox(height: 16),
+          Text(
+            switch (_step) {
+              0 => 'Identifying assumptions...',
+              1 => 'Finding fundamental truths...',
+              2 => 'Reconstructing plan...',
+              _ => 'Thinking...',
+            },
+            style: GoogleFonts.comfortaa(fontSize: 13, color: AppColors.inkLight),
+          ),
+        ],
+      );
+
+  Widget _buildError() => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const SizedBox(height: 16),
+          Text('Something went wrong',
+              style: GoogleFonts.comfortaa(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink)),
+          const SizedBox(height: 8),
+          Text(_error!,
+              style: GoogleFonts.comfortaa(
+                  fontSize: 12, color: AppColors.inkLight),
+              textAlign: TextAlign.center),
+        ],
+      );
+
+  Widget _buildStepContent() {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Step indicator
+          _buildStepIndicator(),
+          const SizedBox(height: 12),
+          Text(_stepSubtitle,
+              style: GoogleFonts.comfortaa(
+                  fontSize: 12, color: AppColors.inkLight, height: 1.4)),
+          const SizedBox(height: 16),
+          // Step content
+          switch (_step) {
+            0 => _buildAssumptionsStep(),
+            1 => _buildTruthsStep(),
+            2 => _buildTasksStep(),
+            _ => const SizedBox.shrink(),
+          },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator() {
+    return Row(
+      children: List.generate(3, (i) {
+        final isActive = i == _step;
+        final isComplete = i < _step;
+        return Expanded(
+          child: Container(
+            height: 3,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              color: isComplete
+                  ? AppColors.ink
+                  : isActive
+                      ? AppColors.ink.withValues(alpha: 0.5)
+                      : AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  // ── Step 0: Assumptions ──────────────────────────────
+
+  Widget _buildAssumptionsStep() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _assumptions.asMap().entries.map((entry) {
+        final index = entry.key;
+        final assumption = entry.value;
+        final isChallenged = assumption.isChallenged;
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _assumptions[index] = assumption.copyWith(
+                isChallenged: !isChallenged,
+              );
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isChallenged ? AppColors.bg : const Color(0xFFE8EAF6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isChallenged
+                    ? AppColors.border
+                    : const Color(0xFF5C6BC0).withValues(alpha: 0.3),
+                width: isChallenged ? 1 : 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isChallenged ? Icons.close : Icons.lightbulb_outline,
+                  size: 14,
+                  color: isChallenged
+                      ? AppColors.inkFaint
+                      : const Color(0xFF5C6BC0),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  assumption.text,
+                  style: GoogleFonts.comfortaa(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isChallenged ? AppColors.inkFaint : AppColors.ink,
+                    decoration: isChallenged ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── Step 1: Truths ──────────────────────────────────
+
+  Widget _buildTruthsStep() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: _truths.asMap().entries.map((entry) {
+        final index = entry.key;
+        final truth = entry.value;
+        final isConfirmed = truth.isConfirmed;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _truths[index] = truth.copyWith(isConfirmed: !isConfirmed);
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isConfirmed
+                    ? const Color(0xFFE8F5E9)
+                    : AppColors.bg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isConfirmed
+                      ? const Color(0xFF66BB6A).withValues(alpha: 0.5)
+                      : AppColors.border,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    isConfirmed
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked,
+                    size: 20,
+                    color: isConfirmed
+                        ? const Color(0xFF43A047)
+                        : AppColors.inkFaint,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          truth.text,
+                          style: GoogleFonts.comfortaa(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isConfirmed ? AppColors.ink : AppColors.inkLight,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          truth.explanation,
+                          style: GoogleFonts.comfortaa(
+                            fontSize: 11,
+                            color: AppColors.inkFaint,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── Step 2: Reconstructed Tasks ──────────────────────
+
+  Widget _buildTasksStep() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.edit_outlined, size: 14, color: AppColors.inkFaint),
+            const SizedBox(width: 6),
+            Text('Tap to edit any step before adding',
+                style: GoogleFonts.comfortaa(
+                    fontSize: 11, color: AppColors.inkFaint)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ..._taskControllers.asMap().entries.map((entry) {
+          return _EditableTaskRow(
+            index: entry.key,
+            controller: entry.value,
+          );
+        }),
+      ],
+    );
+  }
+
+  List<Widget> _buildActions() {
+    return [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text('Cancel',
+            style: GoogleFonts.comfortaa(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkLight)),
+      ),
+      if (_step < 2)
+        TextButton(
+          onPressed: _step == 0 ? _loadTruths : _loadReconstructedTasks,
+          child: Text(
+            _step == 0 ? 'Challenge Them' : 'Reconstruct',
+            style: GoogleFonts.comfortaa(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink),
+          ),
+        )
+      else
+        TextButton(
+          onPressed: _addTasks,
+          child: Text('Add to Steps',
+              style: GoogleFonts.comfortaa(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF43A047))),
+        ),
+    ];
   }
 }
 

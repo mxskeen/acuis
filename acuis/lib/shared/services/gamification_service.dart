@@ -5,7 +5,7 @@ import '../../models/todo.dart';
 import '../../models/goal.dart';
 import '../../models/smart_scores.dart';
 import 'streak_service.dart';
-import 'velocity_service.dart';
+
 
 /// Gamification Service
 ///
@@ -15,7 +15,6 @@ import 'velocity_service.dart';
 /// - Progress Visualization (near-completion motivation)
 /// - BJ Fogg's Tiny Habits (celebration triggers)
 class GamificationService {
-  static const _celebrationsKey = 'gamification_celebrations';
   static const _totalPointsKey = 'gamification_total_points';
   static const _levelKey = 'gamification_level';
   static const _achievementsKey = 'gamification_achievements';
@@ -24,15 +23,13 @@ class GamificationService {
 
   final SharedPreferences _prefs;
   final StreakService _streakService;
-  final VelocityService _velocityService;
 
-  GamificationService(this._prefs, this._streakService, this._velocityService);
+  GamificationService(this._prefs, this._streakService);
 
   static Future<GamificationService> init() async {
     final prefs = await SharedPreferences.getInstance();
     final streakService = await StreakService.init();
-    final velocityService = await VelocityService.init();
-    return GamificationService(prefs, streakService, velocityService);
+    return GamificationService(prefs, streakService);
   }
 
   // ── Celebration Triggers ────────────────────────────────────────
@@ -428,7 +425,6 @@ class GamificationService {
   }
 
   String _generateSmartMessage(Todo todo) {
-    final weakArea = todo.smartScores?.weakestDimension ?? '';
     final strongArea = todo.smartScores?.strongestDimension ?? '';
 
     return "SMART score: ${todo.smartScore.round()}! Strong on $strongArea";

@@ -115,12 +115,12 @@ _GoalSeries _buildSeries(
       y = currentFraction; // no growth if alignment is 0
     } else {
       // Solve for L0 such that logistic(0) = currentFraction
-      final L0 = currentFraction <= 0.001
+      final l0 = currentFraction <= 0.001
           ? 0.001
           : currentFraction >= 0.999
               ? 0.999
               : currentFraction;
-      final shift = log(L0 / (1 - L0)) / k;
+      final shift = log(l0 / (1 - l0)) / k;
       y = 1 / (1 + exp(-k * (d + shift)));
     }
     projected.add((todayDay + d, y.clamp(0.0, 1.0)));

@@ -439,7 +439,6 @@ class _GrowthChartPainter extends CustomPainter {
   void _drawHistorical(Canvas canvas, double cw, double ch, Size size) {
     if (historicalData.isEmpty || animation <= 0) return;
 
-    final rng = Random(goal.id.hashCode);
     final paint = Paint()
       ..color = AppColors.ink
       ..strokeWidth = 2.0
@@ -453,8 +452,6 @@ class _GrowthChartPainter extends CustomPainter {
 
     // Build cumulative progress
     double cumulative = 0;
-    final completed = todos.where((t) => t.completed).length;
-    final total = todos.length;
 
     for (int i = 0; i < historicalData.length; i++) {
       final day = i.toDouble();
@@ -487,8 +484,6 @@ class _GrowthChartPainter extends CustomPainter {
 
   void _drawProjection(Canvas canvas, double cw, double ch, Size size) {
     if (prediction == null || !prediction!.hasReliablePrediction || animation < 0.5) return;
-
-    final animProgress = (animation - 0.5) * 2; // Start projection after historical
 
     final paint = Paint()
       ..color = AppColors.ink.withValues(alpha: 0.5)

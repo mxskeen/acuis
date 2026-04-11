@@ -462,7 +462,7 @@ class _ShimmerEffectState extends State<ShimmerEffect>
 class _SlideGradientTransform extends GradientTransform {
   final double slidePercent;
 
-  _SlideGradientTransform(this.slidePercent);
+  const _SlideGradientTransform(this.slidePercent);
 
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {

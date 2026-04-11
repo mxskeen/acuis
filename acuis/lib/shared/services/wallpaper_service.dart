@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class WallpaperService {
@@ -20,7 +21,7 @@ class WallpaperService {
       }
       return false;
     } catch (e) {
-      print('Error setting wallpaper: $e');
+      debugPrint('Error setting wallpaper: $e');
       return false;
     }
   }
@@ -30,7 +31,7 @@ class WallpaperService {
       final result = await platform.invokeMethod('setWallpaper', {'path': imagePath});
       return result == true;
     } catch (e) {
-      print('Android wallpaper error: $e');
+      debugPrint('Android wallpaper error: $e');
       return false;
     }
   }
@@ -59,7 +60,7 @@ class WallpaperService {
       }
       return false;
     } catch (e) {
-      print('Windows wallpaper error: $e');
+      debugPrint('Windows wallpaper error: $e');
       return false;
     }
   }
@@ -94,7 +95,7 @@ class WallpaperService {
 
       return kdeResult.exitCode == 0;
     } catch (e) {
-      print('Linux wallpaper error: $e');
+      debugPrint('Linux wallpaper error: $e');
       return false;
     }
   }
@@ -108,7 +109,7 @@ class WallpaperService {
       ]);
       return result.exitCode == 0;
     } catch (e) {
-      print('macOS wallpaper error: $e');
+      debugPrint('macOS wallpaper error: $e');
       return false;
     }
   }
