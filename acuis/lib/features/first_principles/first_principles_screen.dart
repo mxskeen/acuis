@@ -48,6 +48,7 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
   List<Truth> _truths = [];
 
   List<Todo> _todos = [];
+  List<ReconstructedTask> _solutions = [];
   String? _error;
 
   // Task editing controllers
@@ -99,7 +100,7 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
       _currentStep = 0;
       _assumptions = [];
       _truths = [];
-
+      _solutions = [];
       _todos = [];
     });
 
@@ -184,7 +185,7 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
       final todos = service.createTodosFromReconstruction(tasks, widget.goal?.id);
 
       setState(() {
-  
+        _solutions = tasks;
         _todos = todos;
         _taskControllers = todos.map((t) => TextEditingController(text: t.title)).toList();
         _isRunning = false;
@@ -234,7 +235,7 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
       _error = null;
       _assumptions = [];
       _truths = [];
-
+      _solutions = [];
       _todos = [];
       _statusText = '';
       if (widget.goal == null) {
@@ -332,8 +333,10 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
                         subtitle: 'Create Solutions',
                         icon: Icons.build_outlined,
                         isLoading: _currentStep == 3 && _isRunning,
-                        child: _todos.isNotEmpty
-                            ? _buildSolutionsList()
+                        child: _solutions.isNotEmpty
+                            ? (widget.onTasksGenerated != null
+                                ? _buildSolutionsList()
+                                : _buildReadOnlySolutionsList())
                             : null,
                       ),
                     ],
@@ -403,6 +406,8 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
 
   Widget _buildHeroSection() {
     // Collapse hero when results are showing to save vertical space
+
+    
     if (_hasStarted) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 4),
@@ -955,6 +960,110 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
           return _EditableTaskRow(
             index: i,
             controller: _taskControllers[i],
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildReadOnlySolutionsList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.rocket_launch_rounded, size: 14, color: const Color(0xFFEF6C00).withValues(alpha: 0.8)),
+            const SizedBox(width: 6),
+            Text(
+              'Solutions built from first principles:',
+              style: GoogleFonts.comfortaa(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkLight,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...List.generate(_solutions.length, (i) {
+          final s = _solutions[i];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF6C00).withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFEF6C00).withValues(alpha: 0.12)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF6C00).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${i + 1}',
+                      style: GoogleFonts.comfortaa(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFEF6C00),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.title,
+                        style: GoogleFonts.comfortaa(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                          height: 1.4,
+                        ),
+                      ),
+                      if (s.reason != null && s.reason!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          s.reason!,
+                          style: GoogleFonts.comfortaa(
+                            fontSize: 11,
+                            color: AppColors.inkLight,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                      if (s.effort != null) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.ink.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            s.effort!,
+                            style: GoogleFonts.comfortaa(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.inkLight,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
         }),
       ],
