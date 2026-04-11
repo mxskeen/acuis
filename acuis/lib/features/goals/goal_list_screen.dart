@@ -11,7 +11,7 @@ import '../../shared/services/storage_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/widgets/streak_sheet.dart';
 import '../../shared/widgets/ai_settings_sheet.dart';
-import '../../shared/widgets/deconstruct_dialog.dart';
+import '../first_principles/first_principles_screen.dart';
 
 class GoalListScreen extends StatefulWidget {
   final List<Goal> goals;
@@ -230,23 +230,16 @@ class _GoalListScreenState extends State<GoalListScreen> with AutomaticKeepAlive
 
   void _showDeconstructDialog(int goalIndex) {
     final goal = goals[goalIndex];
-    final apiKey = _storage.loadAIConfigSync().effectiveApiKey;
 
-    if (apiKey.isEmpty) {
-      _showApiKeyRequiredDialog();
-      return;
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => DeconstructDialog(
-        goal: goal,
-        apiKey: apiKey,
-        onTasksGenerated: (todos) {
-          widget.onAddTodos(todos);
-          Navigator.pop(ctx);
-        },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FirstPrinciplesScreen(
+          goal: goal,
+          onTasksGenerated: (todos) {
+            widget.onAddTodos(todos);
+          },
+        ),
       ),
     );
   }

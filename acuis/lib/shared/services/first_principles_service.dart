@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../models/goal.dart';
 import '../../models/deconstruction_result.dart';
@@ -209,6 +210,7 @@ Return ONLY valid JSON array (no markdown, no explanation):
 
   Future<String?> _callAI(String prompt) async {
     try {
+      debugPrint('[FirstPrinciples] Calling API: $apiUrl');
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -239,12 +241,17 @@ Return ONLY valid JSON array (no markdown, no explanation):
         }),
       );
 
+      debugPrint('[FirstPrinciples] Response status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'] as String;
+        final content = data['choices'][0]['message']['content'] as String;
+        debugPrint('[FirstPrinciples] Got AI response (${content.length} chars)');
+        return content;
       }
+      debugPrint('[FirstPrinciples] API error: ${response.statusCode} — ${response.body.substring(0, (response.body.length > 200) ? 200 : response.body.length)}');
       return null;
     } catch (e) {
+      debugPrint('[FirstPrinciples] Exception: $e');
       return null;
     }
   }
@@ -261,6 +268,7 @@ Return ONLY valid JSON array (no markdown, no explanation):
           .where((a) => a.text.isNotEmpty)
           .toList();
     } catch (e) {
+      debugPrint('[FirstPrinciples] Parse assumptions failed: $e');
       return [];
     }
   }
@@ -278,6 +286,7 @@ Return ONLY valid JSON array (no markdown, no explanation):
           .where((t) => t.text.isNotEmpty)
           .toList();
     } catch (e) {
+      debugPrint('[FirstPrinciples] Parse truths failed: $e');
       return [];
     }
   }
@@ -291,6 +300,7 @@ Return ONLY valid JSON array (no markdown, no explanation):
           .where((t) => t.title.isNotEmpty)
           .toList();
     } catch (e) {
+      debugPrint('[FirstPrinciples] Parse tasks failed: $e');
       return [];
     }
   }

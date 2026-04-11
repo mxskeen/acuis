@@ -11,7 +11,7 @@ import '../../shared/widgets/streak_sheet.dart';
 import '../../shared/widgets/ai_settings_sheet.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../../shared/widgets/deconstruct_dialog.dart';
+import '../first_principles/first_principles_screen.dart';
 
 /// Today View - The daily command center
 ///
@@ -956,48 +956,16 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
   }
 
   void _showDeconstructDialog() {
-    final apiKey = StorageService().loadAIConfigSync().effectiveApiKey;
-
-    if (apiKey.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('API Key Required',
-              style: GoogleFonts.comfortaa(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink)),
-          content: Text('Set your API key in the Alignment tab to use First Principles.',
-              style: GoogleFonts.comfortaa(
-                  fontSize: 13, color: AppColors.inkLight, height: 1.4)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('OK',
-                  style: GoogleFonts.comfortaa(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink)),
-            ),
-          ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FirstPrinciplesScreen(
+          onTasksGenerated: (todos) {
+            for (final todo in todos) {
+              widget.onAddTodo(todo);
+            }
+          },
         ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => DeconstructDialog(
-        apiKey: apiKey,
-        onTasksGenerated: (todos) {
-          for (final todo in todos) {
-            widget.onAddTodo(todo);
-          }
-          Navigator.pop(ctx);
-        },
       ),
     );
   }
