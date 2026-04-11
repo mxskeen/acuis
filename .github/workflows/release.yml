@@ -224,9 +224,86 @@ jobs:
           name: windows-build
           path: acuis-windows.zip
 
+  build-macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version number
+        id: version
+        run: echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.5'
+          channel: stable
+          cache: true
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: acuis
+
+      - name: Build macOS
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: flutter build macos --release --build-number=${{ steps.version.outputs.build_number }} --dart-define=BACKEND_URL="$BACKEND_URL"
+        working-directory: acuis
+
+      - name: Zip macOS build
+        run: |
+          cd acuis/build/macos/Build/Products/Release
+          zip -r "$OLDPWD/acuis-macos.zip" "acuis.app"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: acuis-macos.zip
+
+  build-ios:
+    name: iOS (sideload)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version number
+        id: version
+        run: echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.5'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: acuis
+
+      - name: Build iOS (no-codesign for sideloading)
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: flutter build ios --release --no-codesign --build-number=${{ steps.version.outputs.build_number }} --dart-define=BACKEND_URL="$BACKEND_URL"
+        working-directory: acuis
+
+      - name: Create IPA for sideloading
+        run: |
+          mkdir -p Payload
+          cp -r acuis/build/ios/iphoneos/Runner.app Payload/
+          zip -r acuis-ios.ipa Payload
+          rm -rf Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: acuis-ios.ipa
+
   release:
     name: Create GitHub Release
-    needs: [build-android, build-linux, build-windows]
+    needs: [build-android, build-linux, build-windows, build-macos, build-ios]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -253,6 +330,16 @@ jobs:
           name: windows-build
           path: artifacts/windows
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: artifacts/macos
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-build
+          path: artifacts/ios
+
       - name: Get short SHA
         id: sha
         run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -270,8 +357,12 @@ jobs:
             **Linux (Fedora/RHEL):** `sudo rpm -i acuis.rpm`
             **Linux (any distro):** `chmod +x acuis.AppImage && ./acuis.AppImage`
             **Windows:** Extract `acuis-windows.zip` and run `acuis.exe`.
+            **macOS:** Extract `acuis-macos.zip` and move `acuis.app` to Applications. You may need to allow it in System Settings > Privacy & Security.
+            **iOS:** Sideload `acuis-ios.ipa` using AltStore, Sideloadly, or Apple Configurator.
           files: |
             artifacts/android/app-release.apk
             artifacts/android/app-release.aab
             artifacts/linux/acuis-linux.zip
             artifacts/windows/acuis-windows.zip
+            artifacts/macos/acuis-macos.zip
+            artifacts/ios/acuis-ios.ipa

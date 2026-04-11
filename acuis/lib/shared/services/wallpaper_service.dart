@@ -12,6 +12,11 @@ class WallpaperService {
         return await _setWindowsWallpaper(imagePath);
       } else if (Platform.isLinux) {
         return await _setLinuxWallpaper(imagePath);
+      } else if (Platform.isMacOS) {
+        return await _setMacOSWallpaper(imagePath);
+      } else if (Platform.isIOS) {
+        // iOS doesn't allow programmatic wallpaper changes
+        return false;
       }
       return false;
     } catch (e) {
@@ -90,6 +95,20 @@ class WallpaperService {
       return kdeResult.exitCode == 0;
     } catch (e) {
       print('Linux wallpaper error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _setMacOSWallpaper(String imagePath) async {
+    try {
+      // Use osascript to set wallpaper on macOS
+      final result = await Process.run('osascript', [
+        '-e',
+        'tell application "System Events" to set picture of every desktop to POSIX file "$imagePath"'
+      ]);
+      return result.exitCode == 0;
+    } catch (e) {
+      print('macOS wallpaper error: $e');
       return false;
     }
   }
