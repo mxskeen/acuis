@@ -58,6 +58,8 @@ Designed with evidence-based motivation principles:
 - For Android: Android SDK, min SDK 21
 - For Windows: Visual Studio with the "Desktop development with C++" workload
 - For Linux: standard build tools (clang, cmake, ninja, libgtk-3-dev)
+- For macOS: Xcode, CocoaPods
+- For iOS: Xcode, CocoaPods, Apple Developer account (for device deployment)
 - An NVIDIA NIM API key for AI alignment scoring and task generation
 
 ## Setup
@@ -109,9 +111,44 @@ Build a release binary:
 flutter build linux
 ```
 
-### Other Platforms
+### macOS
 
-iOS and macOS are not currently configured in this project.
+```
+flutter run -d macos
+```
+
+Build a release app:
+
+```
+flutter build macos
+```
+
+### iOS
+
+```
+flutter run -d ios
+```
+
+## Installing on Apple Devices
+
+### macOS
+
+1. Download `acuis-macos.zip` from the [latest release](https://github.com/maskeen/TrueNorth/releases)
+2. Unzip and drag `acuis.app` to `/Applications`
+3. On first launch, macOS blocks it. Go to **System Settings > Privacy & Security** and click **"Open Anyway"**, or run:
+   ```
+   xattr -cr /Applications/acuis.app
+   ```
+
+### iPhone (sideloading)
+
+The IPA is not App Store-signed. Sideload it using [AltStore](https://altstore.io):
+
+1. Install AltStore on your iPhone (requires a Mac/PC for initial setup)
+2. Download `acuis-ios.ipa` from the [latest release](https://github.com/maskeen/TrueNorth/releases) on your phone
+3. Open the IPA with AltStore — it installs like a regular app
+
+> Free Apple ID signing lasts 7 days. AltStore auto-refreshes if your Mac/PC is on the same WiFi. A paid Apple Developer account ($99/yr) extends this to 1 year.
 
 ## AI Features Setup
 
