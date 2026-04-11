@@ -7,7 +7,8 @@ import '../../main.dart';
 /// In-App Update Service
 ///
 /// Handles checking for Play Store updates and prompting users to update.
-/// Only works on Android (Play Store).
+/// Only works on Android (Play Store). On iOS/macOS, updates are handled
+/// by the App Store automatically — all methods are no-ops on non-Android.
 class InAppUpdateService {
   static final InAppUpdateService _instance = InAppUpdateService._internal();
   factory InAppUpdateService() => _instance;
@@ -36,6 +37,7 @@ class InAppUpdateService {
 
   /// Perform immediate update (download and install)
   Future<void> performImmediateUpdate() async {
+    if (!Platform.isAndroid) return;
     try {
       await InAppUpdate.performImmediateUpdate();
     } catch (e) {
@@ -45,6 +47,7 @@ class InAppUpdateService {
 
   /// Start flexible update (downloads in background)
   Future<void> startFlexibleUpdate() async {
+    if (!Platform.isAndroid) return;
     try {
       final result = await InAppUpdate.startFlexibleUpdate();
 
