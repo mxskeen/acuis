@@ -6,7 +6,7 @@ import '../../models/todo.dart';
 
 /// First Principles Deconstruction Service
 ///
-/// Applies Elon Musk's first principles thinking to goal achievement:
+/// Applies first principles thinking to any idea, belief, or goal:
 /// 1. Identify hidden assumptions the user is making
 /// 2. Challenge those assumptions to find fundamental truths
 /// 3. Reconstruct a minimal action plan from confirmed truths only
@@ -21,9 +21,10 @@ class FirstPrinciplesService {
     this.model = 'mistralai/mistral-small-4-119b-2603',
   });
 
-  /// Step 1: Identify assumptions the user is making about how to achieve this goal
+  /// Step 1: Identify assumptions the user is making
   ///
   /// Accepts either a [Goal] object or free-text [title] + [description].
+  /// When no Goal is provided, treats the input as a general idea to deconstruct.
   Future<List<Assumption>> identifyAssumptions({
     Goal? goal,
     String? title,
@@ -31,27 +32,30 @@ class FirstPrinciplesService {
   }) async {
     final effectiveTitle = goal?.title ?? title ?? '';
     final effectiveDesc = goal?.description ?? description ?? '';
-    final timeframe = goal != null
-        ? (goal.type == GoalType.shortTerm
-            ? 'within 1-3 months'
-            : 'over 6-12 months')
-        : 'unspecified';
 
-    final prompt = '''
-You are a first principles thinking coach. The user has this goal:
-
+    final contextBlock = goal != null
+        ? '''
 GOAL: $effectiveTitle
 DESCRIPTION: $effectiveDesc
-TIMEFRAME: $timeframe
-${goal?.targetDate != null ? 'TARGET: ${goal!.daysRemaining} days remaining' : ''}
+TIMEFRAME: ${goal.type == GoalType.shortTerm ? 'within 1-3 months' : 'over 6-12 months'}
+${goal.targetDate != null ? 'TARGET: ${goal.daysRemaining} days remaining' : ''}'''
+        : '''
+IDEA: $effectiveTitle
+${effectiveDesc.isNotEmpty ? 'CONTEXT: $effectiveDesc' : ''}''';
 
-List 4-5 assumptions the user is LIKELY making about HOW to achieve this goal.
+    final prompt = '''
+You are a first principles thinking coach. The user wants to rethink this:
+
+$contextBlock
+
+List 4-5 assumptions the user is LIKELY making about this.
 These should be common beliefs that may or may not be true — things most people
-assume without questioning.
+assume without questioning. These could be about what's necessary, how things work,
+what the rules are, or what "everyone knows".
 
 Each assumption should be a short, clear statement (under 15 words).
 Start with phrases like "You need to...", "You must...", "It requires...",
-"You should...", "The only way is...".
+"You should...", "The only way is...", "It has to be...".
 
 Return ONLY valid JSON (no markdown, no explanation):
 {
@@ -82,20 +86,21 @@ Return ONLY valid JSON (no markdown, no explanation):
     final effectiveTitle = goal?.title ?? title ?? '';
     final effectiveDesc = goal?.description ?? description ?? '';
 
-    final challengedList = challengedAssumptions
+    final assumptionsList = challengedAssumptions
         .map((a) => '- "${a.text}"')
         .join('\n');
 
+    final subjectLabel = goal != null ? 'this goal' : 'this idea';
+
     final prompt = '''
-The user has this goal: $effectiveTitle
-${effectiveDesc.isNotEmpty ? 'Description: $effectiveDesc' : ''}
+The user is rethinking $subjectLabel: $effectiveTitle
+${effectiveDesc.isNotEmpty ? 'Context: $effectiveDesc' : ''}
 
-They challenged these assumptions:
-$challengedList
+These are the assumptions they hold:
+$assumptionsList
 
-For each challenged assumption, find the FUNDAMENTAL TRUTH.
-Strip away convention, common wisdom, and "the way things are done."
-What is actually, provably true about achieving this goal?
+Challenge EACH assumption using Socratic questioning. Find the FUNDAMENTAL TRUTH
+behind each one — what is actually, provably true vs. what is just convention?
 
 Focus on:
 - What is the MINIMUM that must be true?
@@ -135,12 +140,17 @@ Return ONLY valid JSON (no markdown, no explanation):
         .map((t) => '- ${t.text}: ${t.explanation}')
         .join('\n');
 
+    final subjectLabel = goal != null ? 'the goal: $effectiveTitle' : 'the idea: $effectiveTitle';
+
     final prompt = '''
 These are the confirmed fundamental truths:
 $truthsList
 
-Now RECONSTRUCT the problem. Use these truths as building blocks for innovation.
-Generate 5 actionable solutions for: $effectiveTitle
+Now RECONSTRUCT $subjectLabel
+Use these truths as building blocks for innovation. Discard conventional approaches
+entirely — build ONLY from what these truths make possible.
+
+Generate 5 actionable solutions.
 ${effectiveDesc.isNotEmpty ? 'Context: $effectiveDesc' : ''}
 
 RULES:
@@ -218,7 +228,7 @@ Return ONLY valid JSON array (no markdown, no explanation):
             {
               'role': 'system',
               'content':
-                  'You are a first principles thinking coach specializing in goal deconstruction. You help users identify hidden assumptions, find fundamental truths, and build lean action plans. Always respond with valid JSON only.'
+                  'You are a first principles thinking coach. You help users rethink any idea, belief, or goal from scratch — identifying hidden assumptions, finding fundamental truths, and building lean action plans. Always respond with valid JSON only.'
             },
             {'role': 'user', 'content': prompt}
           ],

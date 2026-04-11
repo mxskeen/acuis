@@ -938,7 +938,7 @@ class _TodayViewState extends State<TodayView> with AutomaticKeepAliveClientMixi
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Deconstruct any goal. Challenge assumptions. Find a leaner path.',
+                    'Rethink any idea from scratch. Challenge assumptions. Find what\'s actually true.',
                     style: GoogleFonts.comfortaa(
                       fontSize: 12,
                       color: AppColors.inkLight,
