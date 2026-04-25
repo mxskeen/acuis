@@ -407,12 +407,12 @@ class _FirstPrinciplesScreenState extends State<FirstPrinciplesScreen>
   Widget _buildHeroSection() {
     // Collapse hero when results are showing to save vertical space
 
-    
+
     if (_hasStarted) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 4),
         child: Text(
-          'First Principles',
+          'Rethink your problems',
           style: GoogleFonts.comfortaa(
             fontSize: 18,
             fontWeight: FontWeight.w700,
