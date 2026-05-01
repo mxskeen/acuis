@@ -9,11 +9,15 @@ import 'features/alignment/alignment_screen.dart';
 import 'models/goal.dart';
 import 'models/todo.dart';
 import 'models/journey_plan.dart';
+import 'models/task_status.dart';
 import 'shared/services/storage_service.dart';
 import 'shared/services/alignment_refresh_service.dart';
 import 'shared/services/xp_tracking_service.dart';
+import 'shared/services/gamification_service.dart';
 import 'shared/services/daily_todo_scheduler.dart';
 import 'shared/services/in_app_update_service.dart';
+import 'shared/services/mood_check_service.dart';
+import 'shared/widgets/mood_check_dialog.dart';
 import 'splash_screen.dart';
 
 void main() async {
@@ -112,6 +116,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final _refreshService = AlignmentRefreshService();
   final _xpTrackingService = XPTrackingService.init();
   final _todoScheduler = DailyTodoScheduler();
+  MoodCheckService? _moodService;
+  GamificationService? _gamificationService;
   String? _userName;
   bool _autoGenerationInProgress = false;
 
@@ -132,6 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     // Auto-generate todos on app launch if needed
     _runAutoGeneration();
+    // Init mood service and show check-in on first frame
+    _initMoodService();
   }
 
   /// Auto-generate todos for goals that need them
@@ -165,6 +173,28 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       _autoGenerationInProgress = false;
     }
+  }
+
+  /// Initialize mood check-in service and show dialog on first daily launch
+  Future<void> _initMoodService() async {
+    _moodService = await MoodCheckService.init();
+    _gamificationService = await GamificationService.init();
+    if (!mounted) return;
+
+    // Show check-in dialog on first frame if needed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_moodService!.shouldShowCheckIn() && !_moodService!.isCheckInDisabled()) {
+        MoodCheckDialog.show(
+          context,
+          onEnergySelected: (energy, mood) {
+            _moodService!.recordEnergy(energy, mood: mood);
+          },
+          onDismiss: () {
+            _moodService!.dismissCheckIn();
+          },
+        );
+      }
+    });
   }
 
   void _onPageChanged(int i) {
@@ -296,6 +326,16 @@ class _HomeScreenState extends State<HomeScreen> {
             goals: goals,
             todos: todos,
             userName: _userName,
+            gamificationService: _gamificationService,
+            onMarkStart: (i) async {
+              final updated = [...todos];
+              updated[i] = updated[i].copyWith(
+                status: TaskStatus.inProgress,
+                startedAt: DateTime.now(),
+              );
+              setState(() => todos = updated);
+              _saveData();
+            },
             onAdd: (t) {
               setState(() => todos = [...todos, t]);
               _saveData();
@@ -331,6 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
             goals: goals,
             todos: todos,
             refreshService: _refreshService,
+            moodCheckService: _moodService,
             onDataChanged: (updatedTodos) {
               setState(() => todos = updatedTodos);
               _saveData();

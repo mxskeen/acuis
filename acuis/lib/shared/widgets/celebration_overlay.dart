@@ -73,7 +73,8 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
       child: Stack(
         children: [
           // Confetti
-          if (widget.celebration.type != CelebrationType.streakWarning)
+          if (widget.celebration.type != CelebrationType.streakSupport &&
+              widget.celebration.type != CelebrationType.initiation)
             AnimatedBuilder(
               animation: _controller,
               builder: (context, child) {
@@ -117,7 +118,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
   }
 
   Widget _buildContent() {
-    final isWarning = widget.celebration.type == CelebrationType.streakWarning;
+    final isWarning = widget.celebration.type == CelebrationType.streakSupport;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 40),
@@ -282,7 +283,9 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
       CelebrationType.smartExcellence => 'SMART Move!',
       CelebrationType.highImpact => 'High Impact!',
       CelebrationType.goalComplete => 'Goal Achieved!',
-      CelebrationType.streakWarning => 'Streak at Risk!',
+      CelebrationType.streakSupport => 'Streak Status',
+      CelebrationType.initiation => 'Momentum!',
+      CelebrationType.continuation => 'Flow State!',
       CelebrationType.levelUp => 'Level Up!',
       CelebrationType.achievement => 'Achievement Unlocked!',
     };

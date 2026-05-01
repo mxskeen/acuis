@@ -12,6 +12,7 @@ import '../../shared/services/velocity_service.dart';
 import '../../shared/services/gamification_service.dart';
 import '../../shared/services/streak_service.dart';
 import '../../shared/services/alignment_refresh_service.dart';
+import '../../shared/services/mood_check_service.dart';
 import '../../shared/services/nudge_service.dart';
 import '../../shared/services/smart_defaults_service.dart';
 import '../../shared/services/xp_tracking_service.dart';
@@ -32,6 +33,7 @@ class AlignmentScreen extends StatefulWidget {
   final AlignmentRefreshService refreshService;
   final void Function(List<Todo> updatedTodos) onDataChanged;
   final void Function(Todo) onAddTodo;
+  final MoodCheckService? moodCheckService;
 
   const AlignmentScreen({
     super.key,
@@ -40,6 +42,7 @@ class AlignmentScreen extends StatefulWidget {
     required this.refreshService,
     required this.onDataChanged,
     required this.onAddTodo,
+    this.moodCheckService,
   });
 
   @override
@@ -87,28 +90,27 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
   void _updateNudges() {
     if (!_servicesInitialized) return;
 
-    // Update unanalyzed todos count
     final linkedTodos = widget.todos.where((t) => t.goalId != null).toList();
     final unanalyzedCount = linkedTodos.where((t) => t.alignmentScore == null).length;
     _nudgeService.updateUnanalyzedCount(unanalyzedCount);
 
-    // Check streak risk
+    // Energy-aware: use updateNudges instead of separate checkStreakRisk + updateTimeBasedNudges
     final today = DateTime.now();
     final completedToday = widget.todos.where((t) {
-      return t.completed &&
+      return t.isCompleted &&
              t.createdAt.year == today.year &&
              t.createdAt.month == today.month &&
              t.createdAt.day == today.day;
     }).length;
 
+    _nudgeService.updateNudges(
+      todoCount: linkedTodos.length,
+      completedToday: completedToday,
+    );
+
+    // Also check streak risk for the nudge banner (with supportive messaging)
     final currentStreak = _streakService!.getCurrentStreak();
     _nudgeService.checkStreakRisk(completedToday == 0 && currentStreak > 0, currentStreak);
-
-    // Update time-based nudges
-    final highImpactTodos = linkedTodos.where((t) =>
-      !t.completed && (t.alignmentScore ?? 0) >= 75
-    ).length;
-    _nudgeService.updateTimeBasedNudges(highImpactTodos, completedToday);
   }
 
   void _onRefreshTriggered() {
@@ -133,6 +135,11 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
     _velocityService = await VelocityService.init();
     _gamificationService = await GamificationService.init();
     _xpTrackingService = await XPTrackingService.init();
+
+    // Connect mood service for energy-aware nudges
+    if (widget.moodCheckService != null) {
+      _nudgeService.setMoodService(widget.moodCheckService!);
+    }
 
     // Clean up deleted todos from XP tracking
     await _xpTrackingService!.cleanupDeletedTodos(
@@ -225,7 +232,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
     if (!_servicesInitialized) return;
 
     // Check for high alignment completions
-    for (final todo in todos.where((t) => t.completed)) {
+    for (final todo in todos.where((t) => t.isCompleted)) {
       // Skip if this todo has already been rewarded
       if (_xpTrackingService!.hasBeenRewarded(todo.id)) continue;
 
@@ -517,11 +524,14 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
     Color textColor = const Color(0xFFE65100);
 
     if (_nudgeService.streakAtRisk && _servicesInitialized) {
-      final streak = _streakService!.getCurrentStreak();
-      message = 'Don\'t break your $streak-day streak! Complete 1 todo to keep it alive.';
-      icon = Icons.local_fire_department_outlined;
-      bgColor = const Color(0xFFFFEBEE);
-      textColor = const Color(0xFFC62828);
+      // Use supportive streak message instead of anxiety-inducing warning
+      final supportMsg = _nudgeService.streakSupportMessage;
+      if (supportMsg != null) {
+        message = supportMsg;
+        icon = Icons.local_fire_department_outlined;
+        bgColor = const Color(0xFFFFF3E0);
+        textColor = const Color(0xFFE65100);
+      }
     } else if (_nudgeService.unanalyzedTodosCount > 0) {
       message = 'You have ${_nudgeService.unanalyzedTodosCount} unanalyzed steps. Tap refresh to analyze.';
       icon = Icons.analytics_outlined;
@@ -943,7 +953,7 @@ class _AlignmentScreenState extends State<AlignmentScreen> with AutomaticKeepAli
 
   Widget _buildGoalStatsCard(Goal goal) {
     final goalTodos = widget.todos.where((t) => t.goalId == goal.id).toList();
-    final completed = goalTodos.where((t) => t.completed).length;
+    final completed = goalTodos.where((t) => t.isCompleted).length;
 
     final scoredTodos = goalTodos.where((t) => t.alignmentScore != null).toList();
     double avgScore = 0;

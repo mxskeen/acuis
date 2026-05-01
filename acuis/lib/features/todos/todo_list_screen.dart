@@ -6,7 +6,9 @@ import '../../models/todo.dart';
 import '../../models/goal.dart';
 import '../../shared/services/ai_task_generator_service.dart';
 import '../../shared/services/storage_service.dart';
+import '../../shared/services/gamification_service.dart';
 import '../../shared/services/streak_service.dart';
+import '../../shared/widgets/celebration_overlay.dart';
 import '../../shared/widgets/streak_sheet.dart';
 import '../../shared/widgets/tiny_habits_prompt.dart';
 import '../../shared/widgets/ambient_animations.dart';
@@ -20,6 +22,8 @@ class TodoListScreen extends StatefulWidget {
   final void Function(int) onToggle;
   final void Function(int, Todo) onEdit;
   final void Function(int) onDelete;
+  final GamificationService? gamificationService;
+  final void Function(int index)? onMarkStart;
   const TodoListScreen({
     super.key,
     required this.goals,
@@ -29,6 +33,8 @@ class TodoListScreen extends StatefulWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
+    this.gamificationService,
+    this.onMarkStart,
   });
   @override
   State<TodoListScreen> createState() => _TodoListScreenState();
@@ -380,6 +386,10 @@ class _TodoListScreenState extends State<TodoListScreen> with AutomaticKeepAlive
               return _TodoCard(
                 todo: todo,
                 goals: widget.goals,
+                gamificationService: widget.gamificationService,
+                onMarkStart: widget.onMarkStart != null
+                    ? () => widget.onMarkStart!(index)
+                    : null,
                 onToggle: () {
                   widget.onToggle(index);
                   _checkStreakUpdate();
@@ -647,11 +657,15 @@ class _TodoCard extends StatelessWidget {
   final List<Goal> goals;
   final VoidCallback onToggle;
   final VoidCallback onLongPress;
+  final GamificationService? gamificationService;
+  final VoidCallback? onMarkStart;
   const _TodoCard({
     required this.todo,
     required this.goals,
     required this.onToggle,
     required this.onLongPress,
+    this.gamificationService,
+    this.onMarkStart,
   });
 
   void _showReasonSheet(BuildContext context, Goal goal, VoidCallback onToggle) {
@@ -667,6 +681,8 @@ class _TodoCard extends StatelessWidget {
         goal: goal,
         apiKey: apiKey,
         onMarkComplete: onToggle,
+        onMarkStart: onMarkStart,
+        gamificationService: gamificationService,
       ),
     );
   }
@@ -755,11 +771,15 @@ class _ReasonSheet extends StatefulWidget {
   final Goal goal;
   final String apiKey;
   final VoidCallback? onMarkComplete;
+  final VoidCallback? onMarkStart;
+  final GamificationService? gamificationService;
   const _ReasonSheet({
     required this.todo,
     required this.goal,
     required this.apiKey,
     this.onMarkComplete,
+    this.onMarkStart,
+    this.gamificationService,
   });
 
   @override
@@ -895,6 +915,76 @@ class _ReasonSheetState extends State<_ReasonSheet> {
                                 height: 1.6)),
               ),
             ),
+            // ADHD-Friendly: Start Task button (for pending tasks)
+            if (widget.todo.canStart && widget.onMarkStart != null) ...[
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  widget.onMarkStart?.call();
+                  // Show initiation celebration
+                  if (widget.gamificationService != null) {
+                    final result = widget.gamificationService!
+                        .awardInitiationXP(widget.todo);
+                    if (result != null && context.mounted) {
+                      showCelebration(
+                        context,
+                        Celebration.initiation(
+                          todoTitle: widget.todo.title,
+                          points: result.points,
+                        ),
+                      );
+                      if (result.levelUp != null) {
+                        Future.delayed(
+                          const Duration(seconds: 3),
+                          () {
+                            if (context.mounted) {
+                              showCelebration(
+                                context,
+                                Celebration.levelUp(
+                                  level: result.levelUp!.newLevel,
+                                  points: result.levelUp!.totalPoints,
+                                ),
+                              );
+                            }
+                          },
+                        );
+                      }
+                    }
+                  }
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6C63FF),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6C63FF).withValues(alpha: 0.18),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.play_arrow_rounded,
+                            size: 18, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text('Start Task',
+                            style: GoogleFonts.comfortaa(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
             if (showMarkComplete) ...[
               const SizedBox(height: 16),
               GestureDetector(

@@ -4,7 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/todo.dart';
 import '../../models/goal.dart';
 import '../../models/smart_scores.dart';
+import '../../models/task_status.dart';
 import 'streak_service.dart';
+import 'xp_tracking_service.dart';
 
 
 /// Gamification Service
@@ -23,13 +25,15 @@ class GamificationService {
 
   final SharedPreferences _prefs;
   final StreakService _streakService;
+  final XPTrackingService _xpTracking;
 
-  GamificationService(this._prefs, this._streakService);
+  GamificationService(this._prefs, this._streakService, this._xpTracking);
 
   static Future<GamificationService> init() async {
     final prefs = await SharedPreferences.getInstance();
     final streakService = await StreakService.init();
-    return GamificationService(prefs, streakService);
+    final xpTracking = await XPTrackingService.init();
+    return GamificationService(prefs, streakService, xpTracking);
   }
 
   // ── Celebration Triggers ────────────────────────────────────────
@@ -53,7 +57,7 @@ class GamificationService {
     }
 
     // Eisenhower Q1/Q2 completion (high impact)
-    if (todo.isHighImpact && todo.completed) {
+    if (todo.isHighImpact && todo.isCompleted) {
       return Celebration.highImpact(
         message: _generateHighImpactMessage(todo),
         points: _calculatePoints(todo),
@@ -67,7 +71,7 @@ class GamificationService {
   /// Check for goal completion celebration
   Celebration? checkGoalCompletion(Goal goal, List<Todo> todos) {
     final goalTodos = todos.where((t) => t.goalId == goal.id).toList();
-    final completed = goalTodos.where((t) => t.completed).length;
+    final completed = goalTodos.where((t) => t.isCompleted).length;
 
     if (completed == goalTodos.length && goalTodos.isNotEmpty) {
       final points = goalTodos.fold<int>(0, (sum, t) => sum + _calculatePoints(t));
@@ -80,23 +84,107 @@ class GamificationService {
     return null;
   }
 
-  /// Check for streak warning (loss aversion trigger)
-  Celebration? checkStreakWarning() {
+  // ── Initiation XP (ADHD-Friendly Dopamine Hits) ───────────────────
+
+  /// Award XP when user starts a task (not just completes it)
+  /// This gives dopamine at the resistance point (starting), not the end
+  InitiationResult? awardInitiationXP(Todo todo) {
+    // Only award if task is now in progress and hasn't been started before
+    if (todo.status != TaskStatus.inProgress) return null;
+    if (_xpTracking.hasBeenStarted(todo.id)) return null;
+
+    final points = _calculateInitiationPoints(todo);
+    _xpTracking.markTodoAsStarted(todo.id);
+
+    final levelUp = addPoints(points);
+
+    return InitiationResult(
+      points: points,
+      levelUp: levelUp,
+      isFirstTaskOfDay: _xpTracking.getStartedTodoIds().length == 1,
+    );
+  }
+
+  /// Calculate points for starting a task (smaller than completion)
+  int _calculateInitiationPoints(Todo todo) {
+    int basePoints = 5; // Half of completion base
+
+    // Difficulty bonus (bigger for hard tasks you actually started)
+    basePoints += (todo.estimatedEffort ?? 3);
+
+    // Eisenhower bonus (starting important tasks is hard)
+    if (todo.effectiveEisenhowerClass == EisenhowerClass.doNow) {
+      basePoints += 3; // Extra dopamine for tackling urgent+important
+    } else if (todo.effectiveEisenhowerClass == EisenhowerClass.eliminate) {
+      // If user is starting an "eliminate" task, they might be
+      // avoiding real work - but still reward for momentum
+      basePoints -= 2;
+    }
+
+    // First task bonus (helps build momentum)
+    if (_xpTracking.getStartedTodoIds().isEmpty) {
+      basePoints += 5;
+    }
+
+    return basePoints.clamp(3, 20);
+  }
+
+  /// Award continuation XP for sustained focus (e.g., Pomodoro session)
+  ContinuationResult? awardContinuationXP(String todoId, int minutesFocused) {
+    if (minutesFocused < 5) return null; // Minimum 5 minutes
+
+    // Award points based on focus duration
+    final points = (minutesFocused / 10).round().clamp(1, 10);
+
+    final levelUp = addPoints(points);
+
+    return ContinuationResult(
+      points: points,
+      minutesFocused: minutesFocused,
+      levelUp: levelUp,
+    );
+  }
+
+  /// Check for streak support (ADHD-friendly, non-anxiety-inducing)
+  /// Replaces the old anxious streak warning with supportive messaging
+  Celebration? checkStreakSupport() {
     final streak = _streakService.getCurrentStreak();
     if (streak < 3) return null;
 
     final lastCompletion = _streakService.getLastCompletionDate();
     final today = _getTodayString();
 
-    if (lastCompletion != today) {
-      final lastDate = DateTime.parse(lastCompletion!);
+    // Already completed today - positive reinforcement
+    if (lastCompletion == today) {
+      return Celebration.streakSupport(
+        streak: streak,
+        message: streak >= 7
+            ? '$streak-day streak strong! Take it easy today if you need to.'
+            : 'Building momentum! $streak days and counting.',
+      );
+    }
+
+    // Check if streak is at risk (but not anxiety-inducing)
+    if (lastCompletion != null) {
+      final lastDate = DateTime.parse(lastCompletion);
       final todayDate = DateTime.parse(today);
       final hoursLeft = 24 - DateTime.now().hour;
 
       if (todayDate.difference(lastDate).inDays == 1 && hoursLeft <= 6) {
-        return Celebration.streakWarning(
+        // Check if we have grace days available
+        final graceDays = _streakService.getGraceDaysRemaining();
+        if (graceDays > 0) {
+          return Celebration.streakSupport(
+            streak: streak,
+            message:
+                '$streak-day streak! You have $graceDays grace day${graceDays == 1 ? '' : 's'} if you need a break.',
+          );
+        }
+
+        return Celebration.streakSupport(
           streak: streak,
-          hoursLeft: hoursLeft,
+          message:
+              '$streak days so far! Even a tiny task keeps the momentum.',
         );
       }
     }
@@ -119,7 +207,7 @@ class GamificationService {
     }
 
     final streak = _streakService.getCurrentStreak();
-    final pendingTodos = todos.where((t) => !t.completed).toList();
+    final pendingTodos = todos.where((t) => !t.isCompleted).toList();
 
     // Empty pending tasks - encourage to add more
     if (pendingTodos.isEmpty && goals.isNotEmpty) {
@@ -290,7 +378,7 @@ class GamificationService {
 
   List<Achievement> _getAllPotentialAchievements(List<Goal> goals, List<Todo> todos) {
     final streak = _streakService.getCurrentStreak();
-    final completedTodos = todos.where((t) => t.completed).length;
+    final completedTodos = todos.where((t) => t.isCompleted).length;
     final highAlignmentTodos = todos.where((t) => (t.alignmentScore ?? 0) >= 80).length;
     final totalPoints = getTotalPoints();
 
@@ -462,9 +550,11 @@ enum CelebrationType {
   smartExcellence,
   highImpact,
   goalComplete,
-  streakWarning,
+  streakSupport, // ADHD-friendly: supportive messages, not warnings
   levelUp,
   achievement,
+  initiation, // ADHD-friendly: reward for starting
+  continuation, // ADHD-friendly: reward for sustained focus
 }
 
 class Celebration {
@@ -496,12 +586,25 @@ class Celebration {
   factory Celebration.goalComplete({required String message, required int points}) =>
       Celebration(type: CelebrationType.goalComplete, message: message, points: points);
 
-  factory Celebration.streakWarning({required int streak, required int hoursLeft}) =>
+  factory Celebration.streakSupport({required int streak, required String message}) =>
       Celebration(
-        type: CelebrationType.streakWarning,
-        message: '$streak-day streak at risk! $hoursLeft hours left to save it.',
+        type: CelebrationType.streakSupport,
+        message: message,
         streak: streak,
-        hoursLeft: hoursLeft,
+      );
+
+  factory Celebration.initiation({required String todoTitle, required int points}) =>
+      Celebration(
+        type: CelebrationType.initiation,
+        message: 'Started "$todoTitle" - momentum begins!',
+        points: points,
+      );
+
+  factory Celebration.continuation({required int minutesFocused, required int points}) =>
+      Celebration(
+        type: CelebrationType.continuation,
+        message: '$minutesFocused min of focus - you\'re in the flow!',
+        points: points,
       );
 
   factory Celebration.levelUp({required int level, required int points}) =>
@@ -523,9 +626,11 @@ class Celebration {
     CelebrationType.smartExcellence => '⭐',
     CelebrationType.highImpact => '💪',
     CelebrationType.goalComplete => '🏆',
-    CelebrationType.streakWarning => '⚠️',
+    CelebrationType.streakSupport => '🔥',
     CelebrationType.levelUp => '🎉',
     CelebrationType.achievement => '🏅',
+    CelebrationType.initiation => '🚀',
+    CelebrationType.continuation => '⚡',
   };
 }
 
@@ -573,6 +678,32 @@ class LevelUpResult {
     required this.previousLevel,
     required this.newLevel,
     required this.totalPoints,
+  });
+}
+
+/// Result of awarding initiation XP (ADHD-friendly dopamine hit)
+class InitiationResult {
+  final int points;
+  final LevelUpResult? levelUp;
+  final bool isFirstTaskOfDay;
+
+  const InitiationResult({
+    required this.points,
+    this.levelUp,
+    required this.isFirstTaskOfDay,
+  });
+}
+
+/// Result of awarding continuation XP (sustained focus reward)
+class ContinuationResult {
+  final int points;
+  final int minutesFocused;
+  final LevelUpResult? levelUp;
+
+  const ContinuationResult({
+    required this.points,
+    required this.minutesFocused,
+    this.levelUp,
   });
 }
 
